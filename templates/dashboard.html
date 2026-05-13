@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <div class="dashboard-container">
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>🔒 Security</h2>
+                <p>Dashboard</p>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active">📊 Dashboard</a>
+                <a href="#" class="nav-item">👥 Users</a>
+                <a href="#" class="nav-item">📋 Login Logs</a>
+                <a href="#" class="nav-item">📷 Camera Feed</a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <a href="{{ url_for('logout') }}" class="btn-logout">🚪 Logout</a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+
+            <!-- Top Bar -->
+            <div class="topbar">
+                <h1>Dashboard Overview</h1>
+                <span>Welcome, {{ current_user.username }}!</span>
+            </div>
+
+            <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>👥 Total Users</h3>
+                <p class="stat-number">{{ total_users }}</p>  <!-- Real count from database -->
+            </div>
+            <div class="stat-card">
+                <h3>✅ Successful Logins</h3>
+                <p class="stat-number">{{ success_count }}</p>  <!-- Real count from database -->
+            </div>
+            <div class="stat-card">
+                <h3>❌ Failed Attempts</h3>
+                <p class="stat-number">{{ failed_count }}</p>  <!-- Real count from database -->
+            </div>
+            <div class="stat-card">
+                <h3>📷 Camera Status</h3>
+                <p class="stat-number">Online</p>  <!-- Will connect to camera later -->
+            </div>
+        </div>
+
+        </div>
+
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Dashboard | Login Logs</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <div class="dashboard-container">
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>🔒 Security</h2>
+                <p>Dashboard</p>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="{{ url_for('dashboard') }}" class="nav-item">📊 Dashboard</a>
+                <a href="{{ url_for('users') }}" class="nav-item">👥 Users</a>
+                <!-- Login Logs is active on this page -->
+                <a href="{{ url_for('logs') }}" class="nav-item active">📋 Login Logs</a>
+                <a href="#" class="nav-item">📷 Camera Feed</a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <a href="{{ url_for('logout') }}" class="btn-logout">🚪 Logout</a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+
+            <!-- Top Bar -->
+            <div class="topbar">
+                <h1>Login Logs</h1>
+                <span>Welcome, {{ current_user.username }}!</span>
+            </div>
+
+            <!-- Logs Table -->
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Status</th>
+                            <th>IP Address</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Loop through all logs passed from app.py -->
+                        {% for log in logs %}
+                        <tr>
+                            <td>{{ log.id }}</td>
+                            <td>{{ log.username }}</td>
+                            <td>
+                                <!-- Show green for success, red for failed -->
+                                {% if log.status == 'success' %}
+                                <span class="status-badge status-success">✅ Success</span>
+                                {% else %}
+                                <span class="status-badge status-failed">❌ Failed</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ log.ip_address }}</td>
+                            <td>{{ log.timestamp }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+</html>

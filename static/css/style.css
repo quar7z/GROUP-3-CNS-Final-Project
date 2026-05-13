@@ -1,0 +1,411 @@
+/* ===== GLOBAL ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: #0a0a0a;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+/* ===== LOGIN CONTAINER ===== */
+.login-container {
+    background-color: #1a1a2e;
+    padding: 40px;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 0 30px rgba(0, 200, 255, 0.1);
+    border: 1px solid #16213e;
+}
+
+/* ===== HEADER ===== */
+.login-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.login-header h1 {
+    color: #00c8ff;
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+.login-header p {
+    color: #888;
+    font-size: 13px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+/* ===== FORM ===== */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    color: #aaa;
+    font-size: 13px;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 12px 15px;
+    background-color: #16213e;
+    border: 1px solid #0f3460;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+    outline: none;
+    transition: border 0.3s;
+}
+
+.form-group input:focus {
+    border-color: #00c8ff;
+}
+
+/* ===== PASSWORD WRAPPER ===== */
+.password-wrapper {
+    position: relative;
+}
+
+.password-wrapper input {
+    padding-right: 45px;
+}
+
+#togglePassword {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    font-size: 18px;
+}
+
+/* ===== LOGIN BUTTON ===== */
+.btn-login {
+    width: 100%;
+    padding: 12px;
+    background-color: #00c8ff;
+    color: #0a0a0a;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.3s;
+    margin-top: 10px;
+    letter-spacing: 1px;
+}
+
+.btn-login:hover {
+    background-color: #0099cc;
+}
+
+/* ===== ALERT MESSAGES ===== */
+.alert {
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    text-align: center;
+}
+
+.alert-error {
+    background-color: #ff000020;
+    border: 1px solid #ff0000;
+    color: #ff6666;
+}
+
+.alert-success {
+    background-color: #00ff0020;
+    border: 1px solid #00ff00;
+    color: #66ff66;
+}
+
+.alert-warning {
+    background-color: #ffaa0020;
+    border: 1px solid #ffaa00;
+    color: #ffcc66;
+}
+
+/* ===== DASHBOARD LAYOUT ===== */
+/* Main wrapper - puts sidebar and content side by side */
+.dashboard-container {
+    display: flex;
+    min-height: 100vh;
+    background-color: #0a0a0a;
+}
+
+/* ===== SIDEBAR ===== */
+/* Left panel navigation */
+.sidebar {
+    width: 250px;              /* Fixed width */
+    background-color: #1a1a2e; /* Dark navy */
+    display: flex;
+    flex-direction: column;    /* Stack items vertically */
+    padding: 20px 0;
+    border-right: 1px solid #16213e;
+}
+
+/* Sidebar top - logo/title area */
+.sidebar-header {
+    padding: 20px;
+    text-align: center;
+    border-bottom: 1px solid #16213e;
+    margin-bottom: 20px;
+}
+
+.sidebar-header h2 {
+    color: #00c8ff;            /* Cyan blue title */
+    font-size: 20px;
+}
+
+.sidebar-header p {
+    color: #888;               /* Gray subtitle */
+    font-size: 12px;
+}
+
+/* ===== SIDEBAR NAVIGATION ===== */
+/* Navigation links container */
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;    /* Stack links vertically */
+    flex: 1;                   /* Takes remaining space */
+}
+
+/* Each navigation link */
+.nav-item {
+    padding: 15px 20px;
+    color: #aaa;               /* Gray text */
+    text-decoration: none;     /* Remove underline */
+    font-size: 14px;
+    transition: all 0.3s;      /* Smooth hover effect */
+    border-left: 3px solid transparent; /* Hidden left border */
+}
+
+/* Hover effect on nav links */
+.nav-item:hover {
+    background-color: #16213e; /* Darker background */
+    color: #00c8ff;            /* Cyan text */
+    border-left: 3px solid #00c8ff; /* Cyan left border */
+}
+
+/* Currently active page highlight */
+.nav-item.active {
+    background-color: #16213e;
+    color: #00c8ff;
+    border-left: 3px solid #00c8ff;
+}
+
+/* ===== SIDEBAR FOOTER ===== */
+/* Bottom of sidebar - logout button */
+.sidebar-footer {
+    padding: 20px;
+    border-top: 1px solid #16213e;
+}
+
+/* Logout button */
+.btn-logout {
+    display: block;            /* Full width */
+    padding: 10px;
+    background-color: #ff000020; /* Transparent red */
+    color: #ff6666;            /* Red text */
+    text-decoration: none;
+    border-radius: 8px;
+    text-align: center;
+    border: 1px solid #ff0000;
+    transition: background 0.3s;
+    font-size: 14px;
+}
+
+/* Logout button hover */
+.btn-logout:hover {
+    background-color: #ff000040; /* Darker red on hover */
+}
+
+/* ===== MAIN CONTENT ===== */
+/* Right side - everything except sidebar */
+.main-content {
+    flex: 1;                   /* Takes remaining width */
+    padding: 30px;
+    overflow-y: auto;          /* Scroll if content is long */
+}
+
+/* ===== TOP BAR ===== */
+/* Header bar with title and welcome message */
+.topbar {
+    display: flex;
+    justify-content: space-between; /* Title left, welcome right */
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #16213e;
+}
+
+.topbar h1 {
+    color: #fff;               /* White title */
+    font-size: 22px;
+}
+
+.topbar span {
+    color: #00c8ff;            /* Cyan welcome message */
+    font-size: 14px;
+}
+
+/* ===== STATS GRID ===== */
+/* 4 cards in a row */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); /* 4 equal columns */
+    gap: 20px;                 /* Space between cards */
+    margin-bottom: 30px;
+}
+
+/* Each stat card */
+.stat-card {
+    background-color: #1a1a2e; /* Dark navy card */
+    padding: 25px;
+    border-radius: 12px;
+    border: 1px solid #16213e;
+    text-align: center;
+    transition: transform 0.3s; /* Hover lift effect */
+}
+
+/* Card hover - lifts up slightly */
+.stat-card:hover {
+    transform: translateY(-5px); /* Move up 5px */
+    border-color: #00c8ff;     /* Cyan border on hover */
+}
+
+.stat-card h3 {
+    color: #aaa;               /* Gray label */
+    font-size: 13px;
+    margin-bottom: 15px;
+}
+
+/* The big number on each card */
+.stat-number {
+    color: #00c8ff;            /* Cyan number */
+    font-size: 36px;
+    font-weight: bold;
+}
+
+
+/* ===== TABLE ===== */
+/* Container for the table */
+.table-container {
+    background-color: #1a1a2e;
+    border-radius: 12px;
+    border: 1px solid #16213e;
+    overflow: hidden;          /* Keeps rounded corners */
+}
+
+/* The actual table */
+.data-table {
+    width: 100%;               /* Full width */
+    border-collapse: collapse; /* No double borders */
+}
+
+/* Table header */
+.data-table thead {
+    background-color: #16213e; /* Darker header */
+}
+
+.data-table th {
+    padding: 15px 20px;
+    color: #00c8ff;            /* Cyan header text */
+    font-size: 13px;
+    text-align: left;
+    letter-spacing: 0.5px;
+}
+
+/* Table rows */
+.data-table td {
+    padding: 15px 20px;
+    color: #ccc;               /* Light gray text */
+    font-size: 14px;
+    border-top: 1px solid #16213e; /* Row separator */
+}
+
+/* Hover effect on rows */
+.data-table tbody tr:hover {
+    background-color: #16213e; /* Highlight on hover */
+}
+
+/* ===== ROLE BADGES ===== */
+/* Base badge style */
+.role-badge {
+    padding: 4px 12px;
+    border-radius: 20px;       /* Pill shape */
+    font-size: 12px;
+    font-weight: bold;
+}
+
+/* Admin badge — cyan */
+.role-admin {
+    background-color: #00c8ff20;
+    color: #00c8ff;
+    border: 1px solid #00c8ff;
+}
+
+/* User badge — green */
+.role-user {
+    background-color: #00ff0020;
+    color: #66ff66;
+    border: 1px solid #00ff00;
+}
+
+/* ===== DELETE BUTTON ===== */
+.btn-delete {
+    padding: 6px 12px;
+    background-color: #ff000020; /* Transparent red */
+    color: #ff6666;              /* Red text */
+    border: 1px solid #ff0000;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    transition: background 0.3s;
+}
+
+.btn-delete:hover {
+    background-color: #ff000040; /* Darker on hover */
+}
+
+/* Muted text for current user */
+.text-muted {
+    color: #555;               /* Gray — disabled look */
+    font-size: 13px;
+}
+
+/* ===== STATUS BADGES ===== */
+/* Base badge style */
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;       /* Pill shape */
+    font-size: 12px;
+    font-weight: bold;
+}
+
+/* Success — green */
+.status-success {
+    background-color: #00ff0020;
+    color: #66ff66;
+    border: 1px solid #00ff00;
+}
+
+/* Failed — red */
+.status-failed {
+    background-color: #ff000020;
+    color: #ff6666;
+    border: 1px solid #ff0000;
+}
