@@ -409,3 +409,104 @@ body {
     color: #ff6666;
     border: 1px solid #ff0000;
 }
+
+/* ===== INFO BAR ===== */
+/* Date, time and weather bar */
+.info-bar {
+    display: flex;
+    gap: 30px;
+    padding: 15px 20px;
+    background-color: #1a1a2e;
+    border-radius: 12px;
+    border: 1px solid #16213e;
+    margin-bottom: 20px;
+}
+
+/* Each info item */
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #aaa;
+    font-size: 14px;
+}
+
+.info-icon {
+    font-size: 18px;
+}
+
+/* ===== CAMERA CONTAINER ===== */
+.camera-container {
+    background-color: #1a1a2e;
+    border-radius: 12px;
+    border: 1px solid #16213e;
+    overflow: hidden;
+}
+
+/* Camera header bar */
+.camera-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid #16213e;
+}
+
+.camera-label {
+    color: #fff;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+/* Online/Offline status */
+.camera-status {
+    font-size: 13px;
+    padding: 4px 12px;
+    border-radius: 20px;
+}
+
+/* Offline — red */
+.camera-status.offline {
+    background-color: #ff000020;
+    color: #ff6666;
+    border: 1px solid #ff0000;
+}
+
+/* Online — green (used later) */
+.camera-status.online {
+    background-color: #00ff0020;
+    color: #66ff66;
+    border: 1px solid #00ff00;
+}
+
+/* ===== CAMERA FEED ===== */
+.camera-feed {
+    width: 100%;
+    height: 500px;             /* Big display */
+    background-color: #0a0a0a;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Placeholder when camera offline */
+.camera-placeholder {
+    text-align: center;
+    color: #333;
+}
+
+.camera-placeholder p:first-child {
+    font-size: 80px;           /* Big camera emoji */
+    margin-bottom: 10px;
+}
+
+.camera-placeholder p {
+    font-size: 20px;
+    color: #444;
+    margin-bottom: 8px;
+}
+
+.placeholder-sub {
+    font-size: 13px !important;
+    color: #333 !important;
+}

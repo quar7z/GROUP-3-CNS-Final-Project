@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Dashboard | Camera Feed</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <div class="dashboard-container">
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>🔒 Security</h2>
+                <p>Dashboard</p>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="{{ url_for('dashboard') }}" class="nav-item">📊 Dashboard</a>
+                <a href="{{ url_for('users') }}" class="nav-item">👥 Users</a>
+                <a href="{{ url_for('logs') }}" class="nav-item">📋 Login Logs</a>
+                <!-- Camera Feed is active on this page -->
+                <a href="{{ url_for('camera') }}" class="nav-item active">📷 Camera Feed</a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <a href="{{ url_for('logout') }}" class="btn-logout">🚪 Logout</a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+
+            <!-- Top Bar -->
+            <div class="topbar">
+                <h1>📷 Camera Feed</h1>
+                <span>Welcome, {{ current_user.username }}!</span>
+            </div>
+
+            <!-- Date, Time and Weather Bar -->
+            <div class="info-bar">
+                <!-- Live Date -->
+                <div class="info-item">
+                    <span class="info-icon">📅</span>
+                    <span id="live-date">Loading...</span>
+                </div>
+
+                <!-- Live Time -->
+                <div class="info-item">
+                    <span class="info-icon">🕐</span>
+                    <span id="live-time">Loading...</span>
+                </div>
+
+                <!-- Weather -->
+                <div class="info-item">
+                    <span class="info-icon">🌡️</span>
+                    <span id="weather">Detecting location...</span>
+                </div>
+            </div>
+
+            <!-- Camera Feed Container -->
+            <div class="camera-container">
+
+                <!-- Camera Header -->
+                <div class="camera-header">
+                    <span class="camera-label">📷 CCTV Camera 1</span>
+                    <!-- Status indicator -->
+                    <span class="camera-status offline">
+                        🔴 Offline — Camera not connected yet
+                    </span>
+                </div>
+
+                <!-- Camera Feed / Placeholder -->
+                <div class="camera-feed">
+                    <!-- This will be replaced with real feed later -->
+                    <div class="camera-placeholder">
+                        <p>📷</p>
+                        <p>Camera Offline</p>
+                        <p class="placeholder-sub">
+                            Connect CCTV camera to router to enable live feed
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- JavaScript for live date, time and weather -->
+    <script>
+        // ===== LIVE DATE AND TIME =====
+        function updateDateTime() {
+            const now = new Date();
+
+            // Format date: May 13, 2026
+            const dateOptions = { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            };
+            document.getElementById('live-date').textContent = 
+                now.toLocaleDateString('en-US', dateOptions);
+
+            // Format time: 02:30:25 PM
+            const timeOptions = { 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit',
+                hour12: true 
+            };
+            document.getElementById('live-time').textContent = 
+                now.toLocaleTimeString('en-US', timeOptions);
+        }
+
+        // Update every second
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+
+        // ===== WEATHER AUTO DETECTION =====
+        function getWeather(lat, lon) {
+            // Free weather API — no key needed
+            fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=relativehumidity_2m`)
+                .then(response => response.json())
+                .then(data => {
+                    const temp = data.current_weather.temperature;
+                    const weatherCode = data.current_weather.weathercode;
+
+                    // Weather condition based on code
+                    let condition = '';
+                    if (weatherCode === 0) condition = '☀️ Clear Sky';
+                    else if (weatherCode <= 3) condition = '⛅ Partly Cloudy';
+                    else if (weatherCode <= 67) condition = '🌧️ Rainy';
+                    else if (weatherCode <= 77) condition = '❄️ Snowy';
+                    else condition = '⛈️ Stormy';
+
+                    document.getElementById('weather').textContent = 
+                        `${temp}°C — ${condition}`;
+                })
+                .catch(() => {
+                    document.getElementById('weather').textContent = 'Weather unavailable';
+                });
+        }
+
+        // Get browser location
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                position => {
+                    getWeather(position.coords.latitude, position.coords.longitude);
+                },
+                () => {
+                    document.getElementById('weather').textContent = 'Location blocked';
+                }
+            );
+        } else {
+            document.getElementById('weather').textContent = 'Location not supported';
+        }
+    </script>
+
+</body>
+</html>

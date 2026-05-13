@@ -134,6 +134,12 @@ def logs():
     ).scalars().all()
     return render_template('logs.html', logs=all_logs)
 
+# Camera Feed — shows live camera feed
+@app.route('/camera')
+@login_required
+def camera():
+    return render_template('camera.html')
+
 # Logout — clears session and redirects to login
 @app.route('/logout')
 @login_required
