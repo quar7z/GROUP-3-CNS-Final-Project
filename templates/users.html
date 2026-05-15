@@ -19,12 +19,13 @@
             </div>
 
             <nav class="sidebar-nav">
-                <!-- url_for links to actual Flask routes -->
-                <a href="{{ url_for('dashboard') }}" class="nav-item">📊 Dashboard</a>
-                <!-- active = currently on this page -->
-                <a href="{{ url_for('users') }}" class="nav-item active">👥 Users</a>
-                <a href="#" class="nav-item">📋 Login Logs</a>
-                <a href="#" class="nav-item">📷 Camera Feed</a>
+                <a href="{{ url_for('dashboard') }}" class="nav-item active">📊 Dashboard</a>
+                <!-- Only show these to admin -->
+                {% if current_user.role == 'admin' %}
+                <a href="{{ url_for('users') }}" class="nav-item">👥 Users</a>
+                <a href="{{ url_for('logs') }}" class="nav-item">📋 Login Logs</a>
+                {% endif %}
+                <a href="{{ url_for('camera') }}" class="nav-item">📷 Camera Feed</a>
             </nav>
 
             <div class="sidebar-footer">
@@ -52,6 +53,33 @@
                 {% endif %}
             {% endwith %}
 
+            <!-- Add User Form — admin only -->
+            <div class="add-user-form">
+                <h2>➕ Add New User</h2>
+                <form method="POST" action="{{ url_for('add_user') }}">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Username</label>
+                            <input type="text" name="username" 
+                            placeholder="Enter username" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Password</label>
+                            <input type="password" name="password" 
+                            placeholder="Enter password" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Role</label>
+                            <select name="role">
+                                <option value="user">User</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-login">Add User</button>
+                    </div>
+                </form>
+            </div>
+
             <!-- Users Table — loops through all users from database -->
             <div class="table-container">
                 <table class="data-table">
@@ -60,6 +88,7 @@
                             <th>ID</th>        <!-- User's database ID -->
                             <th>Username</th>  <!-- User's username -->
                             <th>Role</th>      <!-- admin or user -->
+                            <th>Status</th>
                             <th>Action</th>    <!-- Delete button -->
                         </tr>
                     </thead>
@@ -76,6 +105,15 @@
                                 </span>
                             </td>
                             <td>
+                                <!-- Show if account is locked -->
+                                {% if user.locked_until %}
+                                    <span class="status-badge status-failed">🔒 Locked</span>
+                                {% else %}
+                                    <span class="status-badge status-success">✅ Active</span>
+                                {% endif %}
+                                </td>
+                                <td>
+
                                 <!-- Cannot delete yourself — security protection! -->
                                 {% if user.username != current_user.username %}
                                 <!-- Delete button with confirmation popup -->

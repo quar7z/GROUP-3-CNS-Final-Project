@@ -18,11 +18,13 @@
             </div>
 
             <nav class="sidebar-nav">
-                <a href="{{ url_for('dashboard') }}" class="nav-item">📊 Dashboard</a>
+                <a href="{{ url_for('dashboard') }}" class="nav-item active">📊 Dashboard</a>
+                <!-- Only show these to admin -->
+                {% if current_user.role == 'admin' %}
                 <a href="{{ url_for('users') }}" class="nav-item">👥 Users</a>
-                <!-- Login Logs is active on this page -->
-                <a href="{{ url_for('logs') }}" class="nav-item active">📋 Login Logs</a>
-                <a href="#" class="nav-item">📷 Camera Feed</a>
+                <a href="{{ url_for('logs') }}" class="nav-item">📋 Login Logs</a>
+                {% endif %}
+                <a href="{{ url_for('camera') }}" class="nav-item">📷 Camera Feed</a>
             </nav>
 
             <div class="sidebar-footer">

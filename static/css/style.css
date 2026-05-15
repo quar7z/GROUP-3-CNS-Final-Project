@@ -510,3 +510,46 @@ body {
     font-size: 13px !important;
     color: #333 !important;
 }
+
+/* ===== ADD USER FORM ===== */
+.add-user-form {
+    background-color: #1a1a2e;
+    padding: 25px;
+    border-radius: 12px;
+    border: 1px solid #16213e;
+    margin-bottom: 25px;
+}
+
+.add-user-form h2 {
+    color: #00c8ff;
+    font-size: 16px;
+    margin-bottom: 20px;
+}
+
+/* Row of form fields side by side */
+.form-row {
+    display: flex;
+    gap: 15px;
+    align-items: flex-end;
+}
+
+.form-row .form-group {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+/* Dropdown select style */
+select {
+    width: 100%;
+    padding: 12px 15px;
+    background-color: #16213e;
+    border: 1px solid #0f3460;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+    outline: none;
+}
+
+select:focus {
+    border-color: #00c8ff;
+}
