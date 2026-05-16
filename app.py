@@ -5,6 +5,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from flask_bcrypt import Bcrypt
 from dotenv import load_dotenv
 import os
+from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from datetime import timedelta
@@ -14,6 +15,7 @@ load_dotenv()
 
 # ===== INITIALIZE FLASK APP =====
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1) # <-- ADD THIS LINE
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')  # Railway (use later)
 #app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///temp.db'  # Local (temporary)
@@ -136,9 +138,7 @@ def login():
 
         # ===== STEP 3: CHECK PASSWORD =====
         # Only reaches here if both IP and username are NOT locked
-        
-        hashed_password = user.password.decode('utf-8') if isinstance(user.password, bytes) else user.password
-        if user and bcrypt.check_password_hash(hashed_password, password):
+        if user and bcrypt.check_password_hash(user.password, password):
             # ===== SUCCESS =====
             # Reset both IP and username counters
             if ip_block:
