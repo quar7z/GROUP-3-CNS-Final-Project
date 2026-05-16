@@ -69,8 +69,8 @@
                 <div class="camera-header">
                     <span class="camera-label">📷 CCTV Camera 1</span>
                     <!-- Status indicator -->
-                    <span class="camera-status offline">
-                        🔴 Offline — Camera not connected yet
+                    <span class="camera-status online">
+                        🟢 Online — Camera connected 
                     </span>
                 </div>
 
@@ -78,11 +78,7 @@
                 <div class="camera-feed">
                     <!-- This will be replaced with real feed later -->
                     <div class="camera-placeholder">
-                        <p>📷</p>
-                        <p>Camera Offline</p>
-                        <p class="placeholder-sub">
-                            Connect CCTV camera to router to enable live feed
-                        </p>
+                        <video id="video" autoplay playsinline></video>
                     </div>
                 </div>
 
@@ -159,6 +155,15 @@
         } else {
             document.getElementById('weather').textContent = 'Location not supported';
         }
+        
+        navigator.mediaDevices.getUserMedia({ video: true })
+        .then(function(stream) {
+            document.getElementById("video").srcObject = stream;
+        })
+        .catch(function(error) {
+            console.log("Error accessing webcam:", error);
+        });
+
     </script>
 
 </body>

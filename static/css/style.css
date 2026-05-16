@@ -553,3 +553,7 @@ select {
 select:focus {
     border-color: #00c8ff;
 }
+
+video {
+    object-fit: cover;
+}
