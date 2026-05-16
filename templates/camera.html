@@ -69,8 +69,8 @@
                 <div class="camera-header">
                     <span class="camera-label">📷 CCTV Camera 1</span>
                     <!-- Status indicator -->
-                    <span class="camera-status online">
-                        🟢 Online — Camera connected 
+                    <span id="camera-status-text" class="camera-status loading">
+                        Checking status.....
                     </span>
                 </div>
 
@@ -155,14 +155,25 @@
         } else {
             document.getElementById('weather').textContent = 'Location not supported';
         }
-        
+
+        const statusText = document.getElementById("camera-status-text");
+
         navigator.mediaDevices.getUserMedia({ video: true })
-        .then(function(stream) {
-            document.getElementById("video").srcObject = stream;
-        })
-        .catch(function(error) {
-            console.log("Error accessing webcam:", error);
-        });
+            .then(function(stream) {
+                // Pass stream to video element
+                document.getElementById("video").srcObject = stream;
+                
+                // Update UI to Online Status
+                statusText.textContent = "🟢 Online — Camera connected";
+                statusText.className = "camera-status online";
+            })
+            .catch(function(error) {
+                console.log("Error accessing webcam:", error);
+                
+                // Update UI to Offline / Error Status
+                statusText.textContent = "🔴 Offline — Access denied or no device found";
+                statusText.className = "camera-status offline";
+            });
 
     </script>
 
