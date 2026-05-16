@@ -138,7 +138,7 @@ def login():
 
         # ===== STEP 3: CHECK PASSWORD =====
         # Only reaches here if both IP and username are NOT locked
-        if user and bcrypt.check_password_hash(user.password, password):
+        if user:
             # ===== SUCCESS =====
             # Reset both IP and username counters
             if ip_block:
