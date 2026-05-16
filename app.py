@@ -15,8 +15,8 @@ load_dotenv()
 # ===== INITIALIZE FLASK APP =====
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
-# app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')  # Railway (use later)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///temp.db'  # Local (temporary)
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')  # Railway (use later)
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///temp.db'  # Local (temporary)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # ===== INITIALIZE EXTENSIONS =====
@@ -37,8 +37,6 @@ def rate_limit_exceeded(e):
 
 # Session timeout — auto logout after 15 minutes
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=15)
-
-
 
 # ===== LOGIN MANAGER =====
 login_manager = LoginManager(app)
@@ -123,7 +121,6 @@ def login():
                 db.session.commit()
                 flash('Account locked. Try again later.', 'error')
                 return render_template('login.html')  # Stop here!
-
         # ===== STEP 2: CHECK IF USERNAME IS LOCKED =====
         # Blocks by username — prevents VPN bypass
         if user and user.locked_until:
