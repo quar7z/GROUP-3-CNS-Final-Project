@@ -1,13 +1,20 @@
 # ===== IMPORTS =====
-from flask import Flask, render_template, redirect, url_for, flash, request, session
+import os
+import cv2
+import threading
+import time
+from flask import Flask, render_template, redirect, url_for, flash, request, session, Response
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
 from flask_bcrypt import Bcrypt
 from dotenv import load_dotenv
-import os
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from datetime import timedelta
+
+camera_online = False
+rtsp_url = "rtsp://admin:123456@192.168.100.144:554/profile1"
+cap = cv2.VideoCapture(rtsp_url)
 
 # ===== LOAD ENVIRONMENT VARIABLES =====
 load_dotenv()
@@ -15,8 +22,8 @@ load_dotenv()
 # ===== INITIALIZE FLASK APP =====
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')  # Railway (use later)
-#app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///temp.db'  # Local (temporary)
+#app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')  # Railway (use later)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///temp.db'  # Local (temporary)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # ===== INITIALIZE EXTENSIONS =====
@@ -29,6 +36,45 @@ limiter = Limiter(
     key_func=get_remote_address,  # Limit by IP address
     default_limits=["200 per day", "50 per hour"]
 )
+
+def generate_frames():
+    while True:
+        success, frame = cap.read()
+        if not success:
+            continue
+
+        _, buffer = cv2.imencode('.jpg', frame)
+        frame = buffer.tobytes()
+
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+
+@app.route('/video_feed')
+@login_required
+def video_feed():
+    return Response(generate_frames(),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
+
+def monitor_camera():
+    global camera_online
+
+    while True:
+        cap = cv2.VideoCapture(rtsp_url)
+        if cap.isOpened():
+            ret, _ = cap.read()
+            camera_online = ret
+        else:
+            camera_online = False
+
+        cap.release()
+        time.sleep(5)
+
+threading.Thread(target=monitor_camera, daemon=True).start()
+
+@app.route('/camera-status')
+def camera_status():
+    return {"status": "online" if camera_online else "offline"}
+
 # Custom rate limit error message ← add here
 @app.errorhandler(429)
 def rate_limit_exceeded(e):

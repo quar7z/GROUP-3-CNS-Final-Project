@@ -78,7 +78,7 @@
                 <div class="camera-feed">
                     <!-- This will be replaced with real feed later -->
                     <div class="camera-placeholder">
-                        <video id="video" autoplay playsinline></video>
+                        <img src="{{ url_for('video_feed') }}" style="width:100%; max-height:500px;">
                     </div>
                 </div>
 
@@ -155,26 +155,29 @@
         } else {
             document.getElementById('weather').textContent = 'Location not supported';
         }
+        function checkCamera() {
+            fetch("/camera-status")
+                .then(res => res.json())
+                .then(data => {
+                    const status = document.getElementById("camera-status-text");
 
-        const statusText = document.getElementById("camera-status-text");
+                    if (data.status === "online") {
+                        status.textContent = "🟢 Online — Camera connected";
+                        status.className = "camera-status online";
+                    } else {
+                        status.textContent = "🔴 Offline — Camera not reachable";
+                        status.className = "camera-status offline";
+                    }
+                })
+                .catch(() => {
+                    const status = document.getElementById("camera-status-text");
+                    status.textContent = "🔴 Offline — Server error";
+                    status.className = "camera-status offline";
+                });
+        }
 
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then(function(stream) {
-                // Pass stream to video element
-                document.getElementById("video").srcObject = stream;
-                
-                // Update UI to Online Status
-                statusText.textContent = "🟢 Online — Camera connected";
-                statusText.className = "camera-status online";
-            })
-            .catch(function(error) {
-                console.log("Error accessing webcam:", error);
-                
-                // Update UI to Offline / Error Status
-                statusText.textContent = "🔴 Offline — Access denied or no device found";
-                statusText.className = "camera-status offline";
-            });
-
+        setInterval(checkCamera, 5000);
+        checkCamera();
     </script>
 
 </body>
