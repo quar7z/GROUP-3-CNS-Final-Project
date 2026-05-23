@@ -1,6 +1,5 @@
 # ===== IMPORTS =====
 import os
-import cv2
 import threading
 import time
 from flask import Flask, render_template, redirect, url_for, flash, request, session, Response
