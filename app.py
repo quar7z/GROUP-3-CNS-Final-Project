@@ -12,10 +12,6 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from datetime import timedelta
 
-camera_online = False
-rtsp_url = "rtsp://admin:123456@192.168.100.144:554/profile1"
-cap = cv2.VideoCapture(rtsp_url)
-
 # ===== LOAD ENVIRONMENT VARIABLES =====
 load_dotenv()
 
@@ -36,44 +32,6 @@ limiter = Limiter(
     key_func=get_remote_address,  # Limit by IP address
     default_limits=["200 per day", "50 per hour"]
 )
-
-def generate_frames():
-    while True:
-        success, frame = cap.read()
-        if not success:
-            continue
-
-        _, buffer = cv2.imencode('.jpg', frame)
-        frame = buffer.tobytes()
-
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-
-@app.route('/video_feed')
-@login_required
-def video_feed():
-    return Response(generate_frames(),
-                    mimetype='multipart/x-mixed-replace; boundary=frame')
-
-def monitor_camera():
-    global camera_online
-
-    while True:
-        cap = cv2.VideoCapture(rtsp_url)
-        if cap.isOpened():
-            ret, _ = cap.read()
-            camera_online = ret
-        else:
-            camera_online = False
-
-        cap.release()
-        time.sleep(5)
-
-threading.Thread(target=monitor_camera, daemon=True).start()
-
-@app.route('/camera-status')
-def camera_status():
-    return {"status": "online" if camera_online else "offline"}
 
 # Custom rate limit error message ← add here
 @app.errorhandler(429)
