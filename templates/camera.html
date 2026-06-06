@@ -18,13 +18,12 @@
             </div>
 
             <nav class="sidebar-nav">
-                <a href="{{ url_for('dashboard') }}" class="nav-item active">📊 Dashboard</a>
-                <!-- Only show these to admin -->
+                <a href="{{ url_for('dashboard') }}" class="nav-item">📊 Dashboard</a>
                 {% if current_user.role == 'admin' %}
                 <a href="{{ url_for('users') }}" class="nav-item">👥 Users</a>
                 <a href="{{ url_for('logs') }}" class="nav-item">📋 Login Logs</a>
                 {% endif %}
-                <a href="{{ url_for('camera') }}" class="nav-item">📷 Camera Feed</a>
+                <a href="{{ url_for('camera') }}" class="nav-item active">📷 Camera Feed</a>
             </nav>
 
             <div class="sidebar-footer">
@@ -41,121 +40,144 @@
                 <span>Welcome, {{ current_user.username }}!</span>
             </div>
 
-            <!-- Date, Time and Weather Bar -->
+            <!-- Date, Time, Weather and Location Bar -->
             <div class="info-bar">
-                <!-- Live Date -->
                 <div class="info-item">
                     <span class="info-icon">📅</span>
                     <span id="live-date">Loading...</span>
                 </div>
-
-                <!-- Live Time -->
                 <div class="info-item">
                     <span class="info-icon">🕐</span>
                     <span id="live-time">Loading...</span>
                 </div>
-
-                <!-- Weather -->
                 <div class="info-item">
                     <span class="info-icon">🌡️</span>
-                    <span id="weather">Detecting location...</span>
+                    <span id="weather">Detecting...</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-icon">📍</span>
+                    <span id="location">Detecting location...</span>
                 </div>
             </div>
 
             <!-- Camera Feed Container -->
             <div class="camera-container">
-
-                <!-- Camera Header -->
                 <div class="camera-header">
                     <span class="camera-label">📷 CCTV Camera 1</span>
-                    <!-- Status indicator -->
-                    <span id="camera-status-text" class="camera-status loading">
-                        Checking status.....
+                    <span id="camera-header-status" class="camera-status offline">
+                        🔴 Offline — Camera not connected yet
                     </span>
                 </div>
-
-                <!-- Camera Feed / Placeholder -->
-                <div class="camera-feed">
-                    <!-- This will be replaced with real feed later -->
-                    <div class="camera-placeholder">
-                        
+                <div class="camera-feed" id="camera-feed-container">
+                    <!-- Live stream -->
+                    <img id="camera-stream"
+                        src="{{ url_for('video_feed') }}" 
+                        style="width:100%; height:100%; object-fit:contain;"
+                        onerror="showOffline()">
+                    
+                    <!-- Shows if camera offline -->
+                    <div id="offline-msg" class="camera-placeholder" style="display:none;">
+                        <p>📷</p>
+                        <p>Camera Offline</p>
+                        <p class="placeholder-sub">
+                            Connect CCTV camera to router to enable live feed
+                        </p>
                     </div>
                 </div>
-
             </div>
 
-        </div>
-    </div>
-
-    <!-- JavaScript for live date, time and weather -->
-    <script>
-        // ===== LIVE DATE AND TIME =====
-        function updateDateTime() {
-            const now = new Date();
-
-            // Format date: May 13, 2026
-            const dateOptions = { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-            };
-            document.getElementById('live-date').textContent = 
-                now.toLocaleDateString('en-US', dateOptions);
-
-            // Format time: 02:30:25 PM
-            const timeOptions = { 
-                hour: '2-digit', 
-                minute: '2-digit', 
-                second: '2-digit',
-                hour12: true 
-            };
-            document.getElementById('live-time').textContent = 
-                now.toLocaleTimeString('en-US', timeOptions);
-        }
-
-        // Update every second
-        updateDateTime();
-        setInterval(updateDateTime, 1000);
-
-        // ===== WEATHER AUTO DETECTION =====
-        function getWeather(lat, lon) {
-            // Free weather API — no key needed
-            fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=relativehumidity_2m`)
-                .then(response => response.json())
-                .then(data => {
-                    const temp = data.current_weather.temperature;
-                    const weatherCode = data.current_weather.weathercode;
-
-                    // Weather condition based on code
-                    let condition = '';
-                    if (weatherCode === 0) condition = '☀️ Clear Sky';
-                    else if (weatherCode <= 3) condition = '⛅ Partly Cloudy';
-                    else if (weatherCode <= 67) condition = '🌧️ Rainy';
-                    else if (weatherCode <= 77) condition = '❄️ Snowy';
-                    else condition = '⛈️ Stormy';
-
-                    document.getElementById('weather').textContent = 
-                        `${temp}°C — ${condition}`;
-                })
-                .catch(() => {
-                    document.getElementById('weather').textContent = 'Weather unavailable';
-                });
-        }
-
-        // Get browser location
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                position => {
-                    getWeather(position.coords.latitude, position.coords.longitude);
-                },
-                () => {
-                    document.getElementById('weather').textContent = 'Location blocked';
+            <script>
+                // Update camera header status based on stream
+                const stream = document.getElementById('camera-stream');
+                stream.onload = function() {
+                    // Stream loaded — camera online
+                    const status = document.getElementById('camera-header-status');
+                    status.className = 'camera-status online';
+                    status.textContent = '🟢 Online — Live Feed';
                 }
-            );
-        } else {
-            document.getElementById('weather').textContent = 'Location not supported';
-        }
-    </script>
+                // Show offline message if stream fails
+                function showOffline() {
+                    document.getElementById('camera-stream').style.display = 'none';
+                    document.getElementById('offline-msg').style.display = 'flex';
+                }
+
+                // Check if stream loads after 3 seconds
+                setTimeout(function() {
+                    const img = document.getElementById('camera-stream');
+                    if (img.naturalWidth === 0) {
+                        showOffline();
+                    }
+                }, 3000);
+                // ===== LIVE DATE AND TIME =====
+                function updateDateTime() {
+                    const now = new Date();
+                    const dateOptions = { year: 'numeric', month: 'long', day: 'numeric' };
+                    document.getElementById('live-date').textContent =
+                        now.toLocaleDateString('en-US', dateOptions);
+                    const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
+                    document.getElementById('live-time').textContent =
+                        now.toLocaleTimeString('en-US', timeOptions);
+                }
+                updateDateTime();
+                setInterval(updateDateTime, 1000);  // Update every second
+
+                // ===== WEATHER + LOCATION =====
+                function getWeatherAndLocation(lat, lon) {
+                    // Get weather from Open-Meteo — free, no API key needed
+                    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
+                        .then(response => response.json())
+                        .then(data => {
+                            const temp = data.current_weather.temperature;
+                            const code = data.current_weather.weathercode;
+                            let condition = '';
+                            if (code === 0) condition = '☀️ Clear Sky';
+                            else if (code <= 3) condition = '⛅ Partly Cloudy';
+                            else if (code <= 67) condition = '🌧️ Rainy';
+                            else if (code <= 77) condition = '❄️ Snowy';
+                            else condition = '⛈️ Stormy';
+                            document.getElementById('weather').textContent = `${temp}°C — ${condition}`;
+                        })
+                        .catch(() => {
+                            document.getElementById('weather').textContent = 'Weather unavailable';
+                        });
+
+                    // ===== REVERSE GEOCODING — convert coordinates to city name =====
+                    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
+                        .then(response => response.json())
+                        .then(data => {
+                            const city = data.address.city ||
+                                        data.address.town ||
+                                        data.address.municipality ||
+                                        data.address.village || '';
+                            const state = data.address.state || '';
+                            const country = data.address.country || '';
+                            document.getElementById('location').textContent =
+                                `${city}, ${state}, ${country}`;
+                        })
+                        .catch(() => {
+                            document.getElementById('location').textContent = 'Location unavailable';
+                        });
+                }
+
+                // Get browser location automatically
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        position => {
+                            getWeatherAndLocation(
+                                position.coords.latitude,
+                                position.coords.longitude
+                            );
+                        },
+                        () => {
+                            document.getElementById('weather').textContent = 'Location blocked';
+                            document.getElementById('location').textContent = 'Location blocked';
+                        }
+                    );
+                } else {
+                    document.getElementById('weather').textContent = 'Not supported';
+                    document.getElementById('location').textContent = 'Not supported';
+                }
+            </script>
 
 </body>
 </html>

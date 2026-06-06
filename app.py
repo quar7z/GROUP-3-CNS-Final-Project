@@ -1,53 +1,43 @@
-# ===== IMPORTS =====
-import os
-import threading
-import time
 from flask import Flask, render_template, redirect, url_for, flash, request, session, Response
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
 from flask_bcrypt import Bcrypt
 from dotenv import load_dotenv
+import os
+import cv2
+import secrets
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from datetime import timedelta
 
-# ===== LOAD ENVIRONMENT VARIABLES =====
 load_dotenv()
 
-# ===== INITIALIZE FLASK APP =====
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')  # Railway (use later)
-#app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///temp.db'  # Local (temporary)
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# ===== INITIALIZE EXTENSIONS =====
-db = SQLAlchemy(app)      # Database
-bcrypt = Bcrypt(app)      # Password hashing
+db = SQLAlchemy(app)
+bcrypt = Bcrypt(app)
 
-# Rate limiter — limits login attempts per IP
 limiter = Limiter(
     app=app,
-    key_func=get_remote_address,  # Limit by IP address
+    key_func=get_remote_address,
     default_limits=["200 per day", "50 per hour"]
 )
 
-# Custom rate limit error message ← add here
 @app.errorhandler(429)
 def rate_limit_exceeded(e):
     flash('Too many requests. Please try again later.', 'error')
     return render_template('login.html'), 429
 
-# Session timeout — auto logout after 15 minutes
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=15)
 
-# ===== LOGIN MANAGER =====
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+login_manager.login_message = 'Please log in to access this page.'
+login_manager.login_message_category = 'error'
 
-# ===== NO CACHE HEADERS =====
-# Prevents browser back button after logout
-# Copied URLs won't work after session expires
 @app.after_request
 def add_no_cache(response):
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0'
@@ -55,65 +45,89 @@ def add_no_cache(response):
     response.headers['Expires'] = '0'
     return response
 
-# ===== USER MODEL (DATABASE TABLE) =====
+@app.before_request
+def check_session_token():
+    if current_user.is_authenticated:
+        if request.endpoint in ('logout', 'static', 'video_feed'):
+            return
+        if session.get('session_token') != current_user.session_token:
+            logout_user()
+            session.clear()
+            flash('Logged in from another device. Session ended.', 'warning')
+            return redirect(url_for('login'))
+
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
     role = db.Column(db.String(20), default='user')
-    failed_attempts = db.Column(db.Integer, default=0)        # Count failed attempts
-    locked_until = db.Column(db.DateTime, nullable=True)      # Locked until this time
+    failed_attempts = db.Column(db.Integer, default=0)     
+    locked_until = db.Column(db.DateTime, nullable=True)    
+    session_token = db.Column(db.String(64), nullable=True)  
 
-
-# ===== LOGIN LOG MODEL (DATABASE TABLE) =====
 class LoginLog(db.Model):
-    id = db.Column(db.Integer, primary_key=True)           # Unique ID
-    username = db.Column(db.String(80), nullable=False)    # Who tried to login
-    status = db.Column(db.String(10), nullable=False)      # 'success' or 'failed'
-    ip_address = db.Column(db.String(50), nullable=False)  # Where they logged in from
-    timestamp = db.Column(db.DateTime, default=db.func.now()) # When it happened
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), nullable=False)   
+    status = db.Column(db.String(10), nullable=False)      
+    ip_address = db.Column(db.String(50), nullable=False)  
+    timestamp = db.Column(db.DateTime, default=db.func.now())
 
-# ===== IP BLOCK MODEL (DATABASE TABLE) =====
 class IPBlock(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    ip_address = db.Column(db.String(50), nullable=False)  # IP being tracked
-    failed_attempts = db.Column(db.Integer, default=0)     # Failed attempts from this IP
-    locked_until = db.Column(db.DateTime, nullable=True)   # IP locked until this time
-    
-# ===== CREATE DATABASE TABLES ===== ← moved here after User model
+    ip_address = db.Column(db.String(50), nullable=False)  
+    failed_attempts = db.Column(db.Integer, default=0)   
+    locked_until = db.Column(db.DateTime, nullable=True)  
+
 with app.app_context():
     db.create_all()
 
-# ===== USER LOADER =====
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
 
-# ===== ROUTES =====
+camera_instance = None
 
-# Home — redirects to login
+def get_camera():
+    global camera_instance
+    camera_url = os.getenv('CAMERA_URL', '0')
+    if isinstance(camera_url, str) and camera_url.isdigit():
+        camera_url = int(camera_url)
+    if camera_instance is None or not camera_instance.isOpened():
+        camera_instance = cv2.VideoCapture(camera_url)
+    return camera_instance
+
+def generate_frames():
+    cap = get_camera()
+    if not cap.isOpened():
+        return
+    try:
+        while True:
+            success, frame = cap.read()
+            if not success:
+                break
+            ret, buffer = cv2.imencode('.jpg', frame)
+            if not ret:
+                continue
+            frame = buffer.tobytes()
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+    except:
+        pass
+
 @app.route('/')
 def home():
     return redirect(url_for('login'))
 
-# Login — shows login form and handles login logic
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        # Get form data from login form
-        username = request.form['username'].lower().strip()  # Normalize — prevents case bypass
+        username = request.form['username'].lower().strip()
         password = request.form['password']
-        ip_address = request.remote_addr  # Get IP address of requester
+        ip_address = request.remote_addr
 
-        # Find user in database by username
         user = db.session.execute(db.select(User).filter_by(username=username)).scalar()
+        ip_block = db.session.execute(db.select(IPBlock).filter_by(ip_address=ip_address)).scalar()
 
-        # Find IP block record
-        ip_block = db.session.execute(
-            db.select(IPBlock).filter_by(ip_address=ip_address)).scalar()
-
-        # ===== STEP 1: CHECK IF IP IS BLOCKED =====
-        # Blocks by IP — attacker cant bypass by trying different usernames
         if ip_block and ip_block.locked_until:
             from datetime import datetime
             now = datetime.utcnow().replace(tzinfo=None)
@@ -123,9 +137,8 @@ def login():
                 db.session.add(log)
                 db.session.commit()
                 flash('Account locked. Try again later.', 'error')
-                return render_template('login.html')  # Stop here!
-        # ===== STEP 2: CHECK IF USERNAME IS LOCKED =====
-        # Blocks by username — prevents VPN bypass
+                return render_template('login.html')
+
         if user and user.locked_until:
             from datetime import datetime
             now = datetime.utcnow().replace(tzinfo=None)
@@ -135,13 +148,9 @@ def login():
                 db.session.add(log)
                 db.session.commit()
                 flash('Account locked. Try again later.', 'error')
-                return render_template('login.html')  # Stop here!
+                return render_template('login.html')
 
-        # ===== STEP 3: CHECK PASSWORD =====
-        # Only reaches here if both IP and username are NOT locked
         if user and bcrypt.check_password_hash(user.password, password):
-            # ===== SUCCESS =====
-            # Reset both IP and username counters
             if ip_block:
                 ip_block.failed_attempts = 0
                 ip_block.locked_until = None
@@ -149,18 +158,20 @@ def login():
             user.locked_until = None
             db.session.commit()
 
-            login_user(user)            # Create session
-            session.permanent = True    # Enable session timeout
+            token = secrets.token_hex(32)
+            user.session_token = token
+            db.session.commit()
 
-            # Save success log
+            login_user(user)
+            session['session_token'] = token
+            session.permanent = True
+
             log = LoginLog(username=username, status='success', ip_address=ip_address)
             db.session.add(log)
             db.session.commit()
             return redirect(url_for('dashboard'))
 
         else:
-            # ===== WRONG PASSWORD =====
-            # Save failed log
             log = LoginLog(username=username, status='failed', ip_address=ip_address)
             db.session.add(log)
             db.session.commit()
@@ -168,94 +179,116 @@ def login():
             from datetime import datetime, timedelta as td
             now = datetime.utcnow().replace(tzinfo=None)
 
-            # ===== LOCK USERNAME =====
             if user:
                 user.failed_attempts += 1
                 if user.failed_attempts >= 9:
-                    user.locked_until = now + td(days=365)  # 1 year
+                    user.locked_until = now + td(days=365) 
                 elif user.failed_attempts >= 6:
-                    user.locked_until = now + td(minutes=30)  # 30 mins
+                    user.locked_until = now + td(minutes=30) 
                 elif user.failed_attempts >= 3:
-                    user.locked_until = now + td(minutes=5)  # 5 mins
+                    user.locked_until = now + td(minutes=5)  
 
-            # ===== LOCK IP =====
             if not ip_block:
-                # First time this IP — create record
                 ip_block = IPBlock(ip_address=ip_address, failed_attempts=0)
                 db.session.add(ip_block)
 
             ip_block.failed_attempts += 1
             if ip_block.failed_attempts >= 9:
-                ip_block.locked_until = now + td(days=365)  # 1 year
+                ip_block.locked_until = now + td(days=365)
             elif ip_block.failed_attempts >= 6:
-                ip_block.locked_until = now + td(minutes=30)  # 30 mins
+                ip_block.locked_until = now + td(minutes=30)
             elif ip_block.failed_attempts >= 3:
-                ip_block.locked_until = now + td(minutes=5)  # 5 mins
+                ip_block.locked_until = now + td(minutes=5)
 
             db.session.commit()
-
-            # Always same vague message — never reveal details
             flash('Invalid credentials!', 'error')
 
-    return render_template('login.html')  # Show login page
+    return render_template('login.html')
 
-# Dashboard
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    # Regular users can only see camera feed
-    if current_user.role == 'user':
-        return redirect(url_for('camera'))
-
-    # Admin sees full dashboard
-    total_users = db.session.execute(db.select(User)).scalars().all()
-    success_logs = db.session.execute(db.select(LoginLog).filter_by(status='success')).scalars().all()
-    failed_logs = db.session.execute(db.select(LoginLog).filter_by(status='failed')).scalars().all()
+    try:
+        cap = get_camera()
+        camera_status = 'Online' if cap.isOpened() else 'Offline'
+    except:
+        camera_status = 'Offline'
 
     return render_template('dashboard.html',
-        total_users=len(total_users),
-        success_count=len(success_logs),
-        failed_count=len(failed_logs)
+        camera_status=camera_status
     )
 
-# Users — admin only
+@app.route('/video-feed')
+@login_required
+def video_feed():
+    return Response(
+        generate_frames(),
+        mimetype='multipart/x-mixed-replace; boundary=frame'
+    )
+
 @app.route('/users')
 @login_required
 def users():
-    # Only admin can access user management
     if current_user.role != 'admin':
         flash('Access denied! Admins only.', 'error')
         return redirect(url_for('dashboard'))
     all_users = db.session.execute(db.select(User)).scalars().all()
     return render_template('users.html', users=all_users)
 
-# Add User — admin only
 @app.route('/add-user', methods=['POST'])
 @login_required
 def add_user():
-    # Only admin can add users
     if current_user.role != 'admin':
         flash('Access denied! Admins only.', 'error')
         return redirect(url_for('dashboard'))
+
     username = request.form['username'].lower().strip()
     password = request.form['password']
     role = request.form['role']
+
+    if len(password) < 8:
+        flash('Password must be at least 8 characters.', 'error')
+        return redirect(url_for('users'))
+
+    if len(password) > 72:
+        flash('Password must not exceed 72 characters.', 'error')
+        return redirect(url_for('users'))
+
+    if not any(c.isupper() for c in password):
+        flash('Password must contain at least 1 uppercase letter.', 'error')
+        return redirect(url_for('users'))
+
+    if not any(c.islower() for c in password):
+        flash('Password must contain at least 1 lowercase letter.', 'error')
+        return redirect(url_for('users'))
+
+    if not any(c.isdigit() for c in password):
+        flash('Password must contain at least 1 number.', 'error')
+        return redirect(url_for('users'))
+
+    if not any(c in '!@#$%^&*()_+-=[]{}|;:,.<>?' for c in password):
+        flash('Password must contain at least 1 special character.', 'error')
+        return redirect(url_for('users'))
+
+    if len(username) < 3:
+        flash('Username must be at least 3 characters.', 'error')
+        return redirect(url_for('users'))
+
     existing = db.session.execute(db.select(User).filter_by(username=username)).scalar()
     if existing:
-        flash(f'Username {username} already exists!', 'error')
+        flash(f'Username "{username}" already exists!', 'error')
         return redirect(url_for('users'))
+
     hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
     user = User(username=username, password=hashed_password, role=role)
     db.session.add(user)
     db.session.commit()
-    flash(f'User {username} added successfully!', 'success')
+    flash(f'User "{username}" added successfully!', 'success')
     return redirect(url_for('users'))
 
-# Delete User — admin only
 @app.route('/delete-user/<int:user_id>')
 @login_required
 def delete_user(user_id):
-    # Only admin can delete users
     if current_user.role != 'admin':
         flash('Access denied! Admins only.', 'error')
         return redirect(url_for('dashboard'))
@@ -266,14 +299,12 @@ def delete_user(user_id):
             return redirect(url_for('users'))
         db.session.delete(user)
         db.session.commit()
-        flash(f'User {user.username} deleted!', 'success')
+        flash(f'User "{user.username}" deleted!', 'success')
     return redirect(url_for('users'))
 
-# Login Logs — admin only
 @app.route('/logs')
 @login_required
 def logs():
-    # Only admin can see login logs
     if current_user.role != 'admin':
         flash('Access denied! Admins only.', 'error')
         return redirect(url_for('dashboard'))
@@ -282,32 +313,12 @@ def logs():
     ).scalars().all()
     return render_template('logs.html', logs=all_logs)
 
-# Camera Feed — shows live camera feed
-@app.route('/camera')
-@login_required
-def camera():
-    return render_template('camera.html')
-
-# Logout — clears session and redirects to login
 @app.route('/logout')
 @login_required
 def logout():
-    logout_user()  # Clear session
-    return redirect(url_for('login'))  # Go back to login
+    logout_user()
+    session.clear()
+    return redirect(url_for('login'))
 
-# Temporary — Create test user (remove this later!)
-@app.route('/create-test-user')
-def create_test_user():
-    existing = db.session.execute(db.select(User).filter_by(username='admin')).scalar()
-    if existing:
-        return 'Test user already exists!'
-    hashed_password = bcrypt.generate_password_hash('admin123').decode('utf-8')
-    user = User(username='admin', password=hashed_password, role='admin')
-    db.session.add(user)
-    db.session.commit()
-    return 'Test user created! Username: admin, Password: admin123'
-
-# ===== RUN APP =====
 if __name__ == '__main__':
-    # use_reloader=False needed later when adding camera  #debug=True, use_reloader=False
-    app.run(debug=True)
+    app.run(debug=False, host='0.0.0.0', use_reloader=False)

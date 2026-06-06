@@ -4,30 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Security Dashboard | Users</title>
-    <!-- Same CSS as dashboard -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
 
     <div class="dashboard-container">
 
-        <!-- Sidebar — same as dashboard but Users is now active -->
+        <!-- Sidebar -->
         <div class="sidebar">
             <div class="sidebar-header">
                 <h2>🔒 Security</h2>
                 <p>Dashboard</p>
             </div>
-
             <nav class="sidebar-nav">
-                <a href="{{ url_for('dashboard') }}" class="nav-item active">📊 Dashboard</a>
-                <!-- Only show these to admin -->
+                <a href="{{ url_for('dashboard') }}" class="nav-item">📊 Dashboard</a>
                 {% if current_user.role == 'admin' %}
-                <a href="{{ url_for('users') }}" class="nav-item">👥 Users</a>
+                <a href="{{ url_for('users') }}" class="nav-item active">👥 Users</a>
                 <a href="{{ url_for('logs') }}" class="nav-item">📋 Login Logs</a>
                 {% endif %}
-                <a href="{{ url_for('camera') }}" class="nav-item">📷 Camera Feed</a>
             </nav>
-
             <div class="sidebar-footer">
                 <a href="{{ url_for('logout') }}" class="btn-logout">🚪 Logout</a>
             </div>
@@ -36,37 +31,39 @@
         <!-- Main Content -->
         <div class="main-content">
 
-            <!-- Top Bar — shows page title and logged in user -->
             <div class="topbar">
                 <h1>User Management</h1>
                 <span>Welcome, {{ current_user.username }}!</span>
             </div>
 
-            <!-- Flash Messages — shows success/error messages -->
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}
-                        <div class="alert alert-{{ category }}">
-                            {{ message }}
-                        </div>
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
                     {% endfor %}
                 {% endif %}
             {% endwith %}
 
-            <!-- Add User Form — admin only -->
             <div class="add-user-form">
                 <h2>➕ Add New User</h2>
-                <form method="POST" action="{{ url_for('add_user') }}">
+                <form method="POST" action="{{ url_for('add_user') }}" onsubmit="return validateForm()">
                     <div class="form-row">
                         <div class="form-group">
                             <label>Username</label>
-                            <input type="text" name="username" 
-                            placeholder="Enter username" required>
+                            <input type="text" name="username" id="usernameInput" placeholder="Enter username" required>
                         </div>
                         <div class="form-group">
                             <label>Password</label>
-                            <input type="password" name="password" 
-                            placeholder="Enter password" required>
+                            <input type="password" name="password" id="passwordInput" 
+                                placeholder="Min 8 chars, A-Z, a-z, 0-9, !@#$"
+                                required
+                                oncopy="return false"
+                                oncut="return false"
+                                onpaste="return false"
+                                oninput="checkPassword(this)">
+                            <small id="passwordNote" class="field-note" style="visibility:hidden; color:#f85149;">
+                                placeholder
+                            </small>
                         </div>
                         <div class="form-group">
                             <label>Role</label>
@@ -80,50 +77,40 @@
                 </form>
             </div>
 
-            <!-- Users Table — loops through all users from database -->
             <div class="table-container">
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>ID</th>        <!-- User's database ID -->
-                            <th>Username</th>  <!-- User's username -->
-                            <th>Role</th>      <!-- admin or user -->
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Role</th>
                             <th>Status</th>
-                            <th>Action</th>    <!-- Delete button -->
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <!-- Loop through each user passed from app.py -->
                         {% for user in users %}
                         <tr>
-                            <td>{{ user.id }}</td>          <!-- Show ID -->
-                            <td>{{ user.username }}</td>    <!-- Show username -->
+                            <td>{{ user.id }}</td>
+                            <td>{{ user.username }}</td>
                             <td>
-                                <!-- Role badge — styled differently for admin/user -->
-                                <span class="role-badge role-{{ user.role }}">
-                                    {{ user.role }}
-                                </span>
+                                <span class="role-badge role-{{ user.role }}">{{ user.role }}</span>
                             </td>
                             <td>
-                                <!-- Show if account is locked -->
                                 {% if user.locked_until %}
                                     <span class="status-badge status-failed">🔒 Locked</span>
                                 {% else %}
                                     <span class="status-badge status-success">✅ Active</span>
                                 {% endif %}
-                                </td>
-                                <td>
-
-                                <!-- Cannot delete yourself — security protection! -->
+                            </td>
+                            <td>
                                 {% if user.username != current_user.username %}
-                                <!-- Delete button with confirmation popup -->
                                 <a href="{{ url_for('delete_user', user_id=user.id) }}"
                                     class="btn-delete"
-                                    onclick="return confirm('Are you sure you want to delete {{ user.username }}?')">
+                                    onclick="return confirm('Delete {{ user.username }}?')">
                                     🗑️ Delete
                                 </a>
                                 {% else %}
-                                <!-- Shows "Current User" instead of delete for yourself -->
                                 <span class="text-muted">Current User</span>
                                 {% endif %}
                             </td>
@@ -135,7 +122,112 @@
 
         </div>
     </div>
+<script>
+    function checkPassword(input) {
+        const val = input.value;
+        const note = document.getElementById('passwordNote');
 
+        // Reset
+        input.style.borderColor = '';
+        note.style.visibility = 'hidden';
+
+        if (val.length === 0) return;
+
+        if (val.length < 8) {
+            input.style.borderColor = '#f85149';
+            note.style.visibility = 'visible';
+            note.style.color = '#f85149';
+            note.textContent = '⚠️ Too short — at least 8 characters required';
+            return;
+        }
+
+        if (val.length > 72) {
+            input.style.borderColor = '#f85149';
+            note.style.visibility = 'visible';
+            note.style.color = '#f85149';
+            note.textContent = '⚠️ Max 72 characters reached — you cannot type more';
+            return;
+        }
+
+        if (!/[A-Z]/.test(val)) {
+            input.style.borderColor = '#f85149';
+            note.style.visibility = 'visible';
+            note.style.color = '#f85149';
+            note.textContent = '⚠️ Add at least 1 uppercase letter (A-Z)';
+            return;
+        }
+
+        if (!/[a-z]/.test(val)) {
+            input.style.borderColor = '#f85149';
+            note.style.visibility = 'visible';
+            note.style.color = '#f85149';
+            note.textContent = '⚠️ Add at least 1 lowercase letter (a-z)';
+            return;
+        }
+
+        if (!/[0-9]/.test(val)) {
+            input.style.borderColor = '#f85149';
+            note.style.visibility = 'visible';
+            note.style.color = '#f85149';
+            note.textContent = '⚠️ Add at least 1 number (0-9)';
+            return;
+        }
+
+        if (!/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(val)) {
+            input.style.borderColor = '#f85149';
+            note.style.visibility = 'visible';
+            note.style.color = '#f85149';
+            note.textContent = '⚠️ Add at least 1 special character (!@#$%^&*)';
+            return;
+        }
+
+        // All good
+        input.style.borderColor = '#3fb950';
+        note.style.visibility = 'visible';
+        note.style.color = '#3fb950';
+        note.textContent = '✅ Password looks good!';
+    }
+    function validateForm() {
+    const password = document.getElementById('passwordInput').value;
+    const username = document.getElementById('usernameInput').value.trim();
+
+    if (username.length < 3) {
+        alert('Username must be at least 3 characters.');
+        return false;
+    }
+
+    if (password.length < 8) {
+        alert('Password must be at least 8 characters.');
+        return false;
+    }
+
+    if (password.length > 72) {
+        alert('Password must not exceed 72 characters.');
+        return false;
+    }
+
+    if (!/[A-Z]/.test(password)) {
+        alert('Password must contain at least 1 uppercase letter (A-Z).');
+        return false;
+    }
+
+    if (!/[a-z]/.test(password)) {
+        alert('Password must contain at least 1 lowercase letter (a-z).');
+        return false;
+    }
+
+    if (!/[0-9]/.test(password)) {
+        alert('Password must contain at least 1 number (0-9).');
+        return false;
+    }
+
+    if (!/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password)) {
+        alert('Password must contain at least 1 special character (!@#$%^&*).');
+        return false;
+    }
+
+    return true;  // all good — allow submit
+}
+</script>
 </body>
 </html>
-

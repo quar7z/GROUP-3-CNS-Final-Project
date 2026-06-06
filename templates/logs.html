@@ -16,17 +16,13 @@
                 <h2>🔒 Security</h2>
                 <p>Dashboard</p>
             </div>
-
             <nav class="sidebar-nav">
-                <a href="{{ url_for('dashboard') }}" class="nav-item active">📊 Dashboard</a>
-                <!-- Only show these to admin -->
+                <a href="{{ url_for('dashboard') }}" class="nav-item">📊 Dashboard</a>
                 {% if current_user.role == 'admin' %}
                 <a href="{{ url_for('users') }}" class="nav-item">👥 Users</a>
-                <a href="{{ url_for('logs') }}" class="nav-item">📋 Login Logs</a>
+                <a href="{{ url_for('logs') }}" class="nav-item active">📋 Login Logs</a>
                 {% endif %}
-                <a href="{{ url_for('camera') }}" class="nav-item">📷 Camera Feed</a>
             </nav>
-
             <div class="sidebar-footer">
                 <a href="{{ url_for('logout') }}" class="btn-logout">🚪 Logout</a>
             </div>
@@ -35,15 +31,19 @@
         <!-- Main Content -->
         <div class="main-content">
 
-            <!-- Top Bar -->
             <div class="topbar">
                 <h1>Login Logs</h1>
                 <span>Welcome, {{ current_user.username }}!</span>
             </div>
 
-            <!-- Logs Table -->
-            <div class="table-container">
-                <table class="data-table">
+            <!-- Search Bar -->
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="🔍  Search by username, IP address, or status..." oninput="filterLogs()">
+            </div>
+
+            <!-- Scrollable logs table -->
+            <div class="table-container scrollable-table">
+                <table class="data-table" id="logsTable">
                     <thead>
                         <tr>
                             <th>ID</th>
@@ -53,14 +53,12 @@
                             <th>Timestamp</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <!-- Loop through all logs passed from app.py -->
+                    <tbody id="logsBody">
                         {% for log in logs %}
                         <tr>
                             <td>{{ log.id }}</td>
                             <td>{{ log.username }}</td>
                             <td>
-                                <!-- Show green for success, red for failed -->
                                 {% if log.status == 'success' %}
                                 <span class="status-badge status-success">✅ Success</span>
                                 {% else %}
@@ -73,10 +71,75 @@
                         {% endfor %}
                     </tbody>
                 </table>
+
+                <!-- No results message -->
+                <div id="no-results" style="display:none; text-align:center; padding:30px; color:#6e7681;">
+                    No logs found matching your search.
+                </div>
             </div>
 
         </div>
     </div>
+
+    <script>
+    function checkPassword(input) {
+        const val = input.value;
+        const note = document.getElementById('passwordNote');
+
+        if (val.length === 0) {
+            note.style.visibility = 'hidden';
+            return;
+        }
+
+        if (val.length < 8) {
+            note.style.visibility = 'visible';
+            note.textContent = '⚠️ At least 8 characters required';
+            note.style.color = '#f85149';
+            return;
+        }
+
+        if (val.length > 72) {
+            input.value = val.slice(0, 72);
+            note.style.visibility = 'visible';
+            note.textContent = '⚠️ Max 72 characters reached';
+            note.style.color = '#f85149';
+            return;
+        }
+
+        if (!/[A-Z]/.test(val)) {
+            note.style.visibility = 'visible';
+            note.textContent = '⚠️ Add at least 1 uppercase letter (A-Z)';
+            note.style.color = '#f85149';
+            return;
+        }
+
+        if (!/[a-z]/.test(val)) {
+            note.style.visibility = 'visible';
+            note.textContent = '⚠️ Add at least 1 lowercase letter (a-z)';
+            note.style.color = '#f85149';
+            return;
+        }
+
+        if (!/[0-9]/.test(val)) {
+            note.style.visibility = 'visible';
+            note.textContent = '⚠️ Add at least 1 number (0-9)';
+            note.style.color = '#f85149';
+            return;
+        }
+
+        if (!/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(val)) {
+            note.style.visibility = 'visible';
+            note.textContent = '⚠️ Add at least 1 special character (!@#$%^&*)';
+            note.style.color = '#f85149';
+            return;
+        }
+
+        // All good
+        note.style.visibility = 'visible';
+        note.textContent = '✅ Password looks good!';
+        note.style.color = '#3fb950';
+    }
+</script>
 
 </body>
 </html>
