@@ -4,7 +4,6 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from flask_bcrypt import Bcrypt
 from dotenv import load_dotenv
 import os
-import cv2
 import secrets
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
