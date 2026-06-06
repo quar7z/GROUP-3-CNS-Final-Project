@@ -1,7 +1,9 @@
+# ===== IMPORTS =====
 from flask import Flask, render_template, redirect, url_for, flash, request, session, Response
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
 from flask_bcrypt import Bcrypt
+from flask_wtf.csrf import CSRFProtect
 from dotenv import load_dotenv
 import os
 import secrets
@@ -12,43 +14,86 @@ from datetime import timedelta
 load_dotenv()
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')             
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')  
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False              
 
-db = SQLAlchemy(app)
-bcrypt = Bcrypt(app)
+db = SQLAlchemy(app)      
+bcrypt = Bcrypt(app)      
+csrf = CSRFProtect(app)   
 
+# ===== RATE LIMITER =====
+# Limits how many requests a single IP can make
+# Prevents brute force attacks and automated bots
 limiter = Limiter(
     app=app,
-    key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"]
+    key_func=get_remote_address,              
+    default_limits=["200 per day", "50 per hour"]  
 )
 
+# When rate limit is exceeded, show error message instead of raw error page
 @app.errorhandler(429)
 def rate_limit_exceeded(e):
     flash('Too many requests. Please try again later.', 'error')
     return render_template('login.html'), 429
 
+# ===== SESSION TIMEOUT =====
+# Automatically logs out user after 15 minutes of inactivity
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=15)
 
+# ===== LOGIN MANAGER =====
+# Handles user authentication and session management
 login_manager = LoginManager(app)
-login_manager.login_view = 'login'
+login_manager.login_view = 'login'                         
 login_manager.login_message = 'Please log in to access this page.'
 login_manager.login_message_category = 'error'
 
+# ===== NO CACHE + SECURITY HEADERS =====
+# Runs after every request
+# Prevents browser from saving pages in cache
+# Stops users from pressing the Back button to access pages after logout
+# CSP headers prevent XSS attacks by blocking unauthorized scripts
 @app.after_request
 def add_no_cache(response):
+    # ===== NO CACHE =====
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
+
+    # ===== CSP HEADERS (XSS PROTECTION) =====
+    # default-src 'self' — only allow resources from our own server
+    # script-src 'self' 'unsafe-inline' — allow our own scripts
+    # style-src 'self' 'unsafe-inline' — allow our own styles
+    # img-src 'self' data: — allow our own images
+    # connect-src — allow weather and location API calls
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "connect-src 'self' https://api.open-meteo.com https://nominatim.openstreetmap.org; "
+    )
+
+    # ===== ADDITIONAL SECURITY HEADERS =====
+    # Prevents clickjacking attacks (embedding your site in an iframe)
+    response.headers['X-Frame-Options'] = 'DENY'
+    # Prevents browser from guessing content type (MIME sniffing)
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+
     return response
 
+# ===== 1 DEVICE PER SESSION =====
+# Runs before every request
+# Each user can only be logged in on ONE device at a time
+# If the same account logs in from another device, the previous session is kicked out
 @app.before_request
 def check_session_token():
     if current_user.is_authenticated:
+        # Skip check for logout, static files, and camera feed
         if request.endpoint in ('logout', 'static', 'video_feed'):
             return
+        # Compare session token stored in browser vs token stored in database
+        # If they don't match, someone else logged in with this account
         if session.get('session_token') != current_user.session_token:
             logout_user()
             session.clear()
@@ -56,26 +101,37 @@ def check_session_token():
             return redirect(url_for('login'))
 
 class User(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    password = db.Column(db.String(200), nullable=False)
-    role = db.Column(db.String(20), default='user')
-    failed_attempts = db.Column(db.Integer, default=0)     
-    locked_until = db.Column(db.DateTime, nullable=True)    
-    session_token = db.Column(db.String(64), nullable=True)  
+    id = db.Column(db.Integer, primary_key=True)                  
+    username = db.Column(db.String(80), unique=True, nullable=False)  
+    password = db.Column(db.String(200), nullable=False)          
+    role = db.Column(db.String(20), default='user')               
+    failed_attempts = db.Column(db.Integer, default=0)            
+    locked_until = db.Column(db.DateTime, nullable=True)          
+    session_token = db.Column(db.String(64), nullable=True)       
 
 class LoginLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), nullable=False)   
+    username = db.Column(db.String(80), nullable=False)    
     status = db.Column(db.String(10), nullable=False)      
     ip_address = db.Column(db.String(50), nullable=False)  
-    timestamp = db.Column(db.DateTime, default=db.func.now())
+    timestamp = db.Column(db.DateTime, default=db.func.now())  
 
+# ===== IP BLOCK MODEL =====
+# Tracks failed login attempts per IP address
+# Blocks IP addresses that repeatedly fail to login (brute force prevention)
 class IPBlock(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     ip_address = db.Column(db.String(50), nullable=False)  
-    failed_attempts = db.Column(db.Integer, default=0)   
-    locked_until = db.Column(db.DateTime, nullable=True)  
+    failed_attempts = db.Column(db.Integer, default=0)     
+    locked_until = db.Column(db.DateTime, nullable=True)   
+
+class ActivityLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), nullable=False)    
+    role = db.Column(db.String(20), nullable=False)        
+    action = db.Column(db.String(200), nullable=False)     
+    ip_address = db.Column(db.String(50), nullable=False)  
+    timestamp = db.Column(db.DateTime, default=db.func.now())  
 
 with app.app_context():
     db.create_all()
@@ -87,24 +143,27 @@ def load_user(user_id):
 camera_instance = None
 
 def get_camera():
+    # Gets or creates the camera instance
+    # Reads CAMERA_URL from .env — '0' means USB webcam, RTSP URL means IP camera
     global camera_instance
     camera_url = os.getenv('CAMERA_URL', '0')
     if isinstance(camera_url, str) and camera_url.isdigit():
-        camera_url = int(camera_url)
+        camera_url = int(camera_url)  # Convert '0' string to integer for USB webcam
     if camera_instance is None or not camera_instance.isOpened():
         camera_instance = cv2.VideoCapture(camera_url)
     return camera_instance
 
 def generate_frames():
+
     cap = get_camera()
     if not cap.isOpened():
-        return
+        return  
     try:
         while True:
-            success, frame = cap.read()
+            success, frame = cap.read()  
             if not success:
                 break
-            ret, buffer = cv2.imencode('.jpg', frame)
+            ret, buffer = cv2.imencode('.jpg', frame)  
             if not ret:
                 continue
             frame = buffer.tobytes()
@@ -120,9 +179,9 @@ def home():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form['username'].lower().strip()
+        username = request.form['username'].lower().strip()  
         password = request.form['password']
-        ip_address = request.remote_addr
+        ip_address = request.remote_addr  
 
         user = db.session.execute(db.select(User).filter_by(username=username)).scalar()
         ip_block = db.session.execute(db.select(IPBlock).filter_by(ip_address=ip_address)).scalar()
@@ -163,8 +222,10 @@ def login():
 
             login_user(user)
             session['session_token'] = token
-            session.permanent = True
+            session.permanent = True 
 
+            act = ActivityLog(username=user.username, role=user.role, action='Logged in', ip_address=ip_address)
+            db.session.add(act)
             log = LoginLog(username=username, status='success', ip_address=ip_address)
             db.session.add(log)
             db.session.commit()
@@ -181,9 +242,9 @@ def login():
             if user:
                 user.failed_attempts += 1
                 if user.failed_attempts >= 9:
-                    user.locked_until = now + td(days=365) 
+                    user.locked_until = now + td(days=365)   
                 elif user.failed_attempts >= 6:
-                    user.locked_until = now + td(minutes=30) 
+                    user.locked_until = now + td(minutes=30)  
                 elif user.failed_attempts >= 3:
                     user.locked_until = now + td(minutes=5)  
 
@@ -205,17 +266,14 @@ def login():
     return render_template('login.html')
 
 @app.route('/dashboard')
-@login_required
+@login_required 
 def dashboard():
     try:
         cap = get_camera()
         camera_status = 'Online' if cap.isOpened() else 'Offline'
     except:
         camera_status = 'Offline'
-
-    return render_template('dashboard.html',
-        camera_status=camera_status
-    )
+    return render_template('dashboard.html', camera_status=camera_status)
 
 @app.route('/video-feed')
 @login_required
@@ -248,23 +306,18 @@ def add_user():
     if len(password) < 8:
         flash('Password must be at least 8 characters.', 'error')
         return redirect(url_for('users'))
-
     if len(password) > 72:
         flash('Password must not exceed 72 characters.', 'error')
         return redirect(url_for('users'))
-
     if not any(c.isupper() for c in password):
         flash('Password must contain at least 1 uppercase letter.', 'error')
         return redirect(url_for('users'))
-
     if not any(c.islower() for c in password):
         flash('Password must contain at least 1 lowercase letter.', 'error')
         return redirect(url_for('users'))
-
     if not any(c.isdigit() for c in password):
         flash('Password must contain at least 1 number.', 'error')
         return redirect(url_for('users'))
-
     if not any(c in '!@#$%^&*()_+-=[]{}|;:,.<>?' for c in password):
         flash('Password must contain at least 1 special character.', 'error')
         return redirect(url_for('users'))
@@ -282,10 +335,15 @@ def add_user():
     user = User(username=username, password=hashed_password, role=role)
     db.session.add(user)
     db.session.commit()
+
+    act = ActivityLog(username=current_user.username, role=current_user.role, action=f'Added user: {username}', ip_address=request.remote_addr)
+    db.session.add(act)
+    db.session.commit()
+
     flash(f'User "{username}" added successfully!', 'success')
     return redirect(url_for('users'))
 
-@app.route('/delete-user/<int:user_id>')
+@app.route('/delete-user/<int:user_id>', methods=['POST'])
 @login_required
 def delete_user(user_id):
     if current_user.role != 'admin':
@@ -296,6 +354,13 @@ def delete_user(user_id):
         if user.username == current_user.username:
             flash('You cannot delete yourself!', 'error')
             return redirect(url_for('users'))
+        
+        user.session_token = None
+        db.session.commit()
+
+        act = ActivityLog(username=current_user.username, role=current_user.role, action=f'Deleted user: {user.username}', ip_address=request.remote_addr)
+        db.session.add(act)
+
         db.session.delete(user)
         db.session.commit()
         flash(f'User "{user.username}" deleted!', 'success')
@@ -312,12 +377,28 @@ def logs():
     ).scalars().all()
     return render_template('logs.html', logs=all_logs)
 
+@app.route('/activity')
+@login_required
+def activity():
+    if current_user.role == 'admin':
+        all_activity = db.session.execute(
+            db.select(ActivityLog).order_by(ActivityLog.timestamp.desc())
+        ).scalars().all()
+    else:
+        all_activity = db.session.execute(
+            db.select(ActivityLog).filter_by(username=current_user.username).order_by(ActivityLog.timestamp.desc())
+        ).scalars().all()
+    return render_template('activity.html', logs=all_activity)
+
 @app.route('/logout')
 @login_required
 def logout():
+    act = ActivityLog(username=current_user.username, role=current_user.role, action='Logged out', ip_address=request.remote_addr)
+    db.session.add(act)
+    db.session.commit()
     logout_user()
-    session.clear()
+    session.clear()  
     return redirect(url_for('login'))
 
 if __name__ == '__main__':
-    app.run(debug=False, host='0.0.0.0', use_reloader=False)
+    app.run(debug=False, host='0.0.0.0', port=8080, use_reloader=False)
