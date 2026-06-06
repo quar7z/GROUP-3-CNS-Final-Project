@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Security Dashboard | Login Logs</title>
+    <title>Security Dashboard | Activity Logs</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-
     <div class="dashboard-container">
 
         <!-- ===== SIDEBAR ===== -->
@@ -25,11 +24,11 @@
                 <!-- Admin only menu items -->
                 {% if current_user.role == 'admin' %}
                 <a href="{{ url_for('users') }}" class="nav-item">👥 Users</a>
-                <a href="{{ url_for('logs') }}" class="nav-item active">📋 Login Logs</a>
+                <a href="{{ url_for('logs') }}" class="nav-item">📋 Login Logs</a>
                 {% endif %}
 
-                <!-- Available to all logged in users -->
-                <a href="{{ url_for('activity') }}" class="nav-item">📝 Activity Logs</a>
+                <!-- Active page — available to all logged in users -->
+                <a href="{{ url_for('activity') }}" class="nav-item active">📝 Activity Logs</a>
             </nav>
             <div class="sidebar-footer">
                 <a href="{{ url_for('logout') }}" class="btn-logout">🚪 Logout</a>
@@ -41,21 +40,22 @@
 
             <!-- ===== TOP BAR ===== -->
             <div class="topbar">
-                <h1>Login Logs</h1>
+                <h1>Activity Logs</h1>
                 <span>Welcome, {{ current_user.username }}!</span>
             </div>
 
             <!-- ===== SEARCH BAR ===== -->
             <!-- Filters the table in real time as the user types -->
-            <!-- Searches across username, IP address, and status columns -->
+            <!-- Searches across username, role, and action columns -->
             <div class="search-bar">
                 <input type="text" id="searchInput"
-                    placeholder="🔍  Search by username, IP address, or status..."
+                    placeholder="🔍  Search by username, role, or action..."
                     oninput="filterLogs()">
             </div>
 
-            <!-- ===== LOGIN LOGS TABLE ===== -->
-            <!-- Shows every login attempt — both successful and failed -->
+            <!-- ===== ACTIVITY LOGS TABLE ===== -->
+            <!-- Admin sees everyone's activity -->
+            <!-- Regular user sees only their own activity -->
             <!-- Ordered newest first so latest activity is at the top -->
             <!-- Scrollable so it doesn't push the page too long -->
             <div class="table-container scrollable-table">
@@ -63,9 +63,10 @@
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>Username</th>
-                            <th>Status</th>       <!-- Success or Failed -->
-                            <th>IP Address</th>   <!-- Where the attempt came from -->
+                            <th>Username</th>     <!-- Who performed the action -->
+                            <th>Role</th>         <!-- Their role (admin or user) -->
+                            <th>Action</th>       <!-- What they did -->
+                            <th>IP Address</th>   <!-- Where the action came from -->
                             <th>Timestamp</th>    <!-- When it happened -->
                         </tr>
                     </thead>
@@ -75,13 +76,10 @@
                             <td>{{ log.id }}</td>
                             <td>{{ log.username }}</td>
                             <td>
-                                <!-- Green badge for success, red badge for failed -->
-                                {% if log.status == 'success' %}
-                                <span class="status-badge status-success">✅ Success</span>
-                                {% else %}
-                                <span class="status-badge status-failed">❌ Failed</span>
-                                {% endif %}
+                                <!-- Role badge — blue for admin, green for user -->
+                                <span class="role-badge role-{{ log.role }}">{{ log.role }}</span>
                             </td>
+                            <td>{{ log.action }}</td>
                             <td>{{ log.ip_address }}</td>
                             <td>{{ log.timestamp }}</td>
                         </tr>
@@ -91,7 +89,7 @@
 
                 <!-- Shown when search has no matching results -->
                 <div id="no-results" style="display:none; text-align:center; padding:30px; color:#6e7681;">
-                    No logs found matching your search.
+                    No activity found matching your search.
                 </div>
             </div>
 
@@ -102,7 +100,7 @@
     // ===== SEARCH FILTER =====
     // Runs every time the user types in the search bar
     // Hides rows that don't match the search input
-    // Shows "No logs found" message if nothing matches
+    // Shows "No activity found" message if nothing matches
     function filterLogs() {
         const input = document.getElementById('searchInput').value.toLowerCase();
         const rows = document.querySelectorAll('#logsBody tr');

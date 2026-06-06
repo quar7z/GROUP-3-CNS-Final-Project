@@ -10,32 +10,43 @@
 
     <div class="dashboard-container">
 
-        <!-- Sidebar -->
+        <!-- ===== SIDEBAR ===== -->
+        <!-- Fixed navigation panel on the left side -->
+        <!-- Admin sees all menu items, regular users only see Dashboard and Activity Logs -->
         <div class="sidebar">
             <div class="sidebar-header">
                 <h2>🔒 Security</h2>
                 <p>Dashboard</p>
             </div>
             <nav class="sidebar-nav">
+                <!-- Available to all logged in users -->
                 <a href="{{ url_for('dashboard') }}" class="nav-item">📊 Dashboard</a>
+
+                <!-- Admin only menu items -->
                 {% if current_user.role == 'admin' %}
                 <a href="{{ url_for('users') }}" class="nav-item active">👥 Users</a>
                 <a href="{{ url_for('logs') }}" class="nav-item">📋 Login Logs</a>
                 {% endif %}
+
+                <!-- Available to all logged in users -->
+                <a href="{{ url_for('activity') }}" class="nav-item">📝 Activity Logs</a>
             </nav>
             <div class="sidebar-footer">
                 <a href="{{ url_for('logout') }}" class="btn-logout">🚪 Logout</a>
             </div>
         </div>
 
-        <!-- Main Content -->
+        <!-- ===== MAIN CONTENT ===== -->
         <div class="main-content">
 
+            <!-- ===== TOP BAR ===== -->
             <div class="topbar">
                 <h1>User Management</h1>
                 <span>Welcome, {{ current_user.username }}!</span>
             </div>
 
+            <!-- ===== FLASH MESSAGES ===== -->
+            <!-- Shows success or error messages after adding/deleting a user -->
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}
@@ -44,27 +55,47 @@
                 {% endif %}
             {% endwith %}
 
+            <!-- ===== ADD USER FORM ===== -->
+            <!-- Admin can create new user accounts here -->
+            <!-- Validation happens both in JavaScript (frontend) and Python (backend) -->
+            <!-- Backend validation cannot be bypassed even if JavaScript is disabled -->
             <div class="add-user-form">
                 <h2>➕ Add New User</h2>
                 <form method="POST" action="{{ url_for('add_user') }}" onsubmit="return validateForm()">
+
+                    <!-- CSRF Token — prevents fake form submissions from other websites -->
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
                     <div class="form-row">
+                        <!-- Username Field — minimum 3 characters -->
                         <div class="form-group">
                             <label>Username</label>
-                            <input type="text" name="username" id="usernameInput" placeholder="Enter username" required>
+                            <input type="text" name="username" id="usernameInput"
+                                placeholder="Enter username" required>
                         </div>
+
+                        <!-- Password Field — must meet all requirements -->
+                        <!-- oncopy/oncut/onpaste disabled to prevent password leaking -->
                         <div class="form-group">
                             <label>Password</label>
-                            <input type="password" name="password" id="passwordInput" 
-                                placeholder="Min 8 chars, A-Z, a-z, 0-9, !@#$"
-                                required
-                                oncopy="return false"
-                                oncut="return false"
-                                onpaste="return false"
-                                oninput="checkPassword(this)">
+                            <div class="password-wrapper">
+                                <input type="password" name="password" id="passwordInput"
+                                    placeholder="Min 8 chars, A-Z, a-z, 0-9, !@#$"
+                                    required
+                                    oncopy="return false"
+                                    oncut="return false"
+                                    onpaste="return false"
+                                    oninput="checkPassword(this)">
+                                <!-- Eye icon — click to show/hide password -->
+                                <span id="togglePassword">👁️</span>
+                            </div>
+                            <!-- Live feedback shown while typing the password -->
                             <small id="passwordNote" class="field-note" style="visibility:hidden; color:#f85149;">
                                 placeholder
                             </small>
                         </div>
+
+                        <!-- Role Selector — admin or regular user -->
                         <div class="form-group">
                             <label>Role</label>
                             <select name="role">
@@ -72,11 +103,14 @@
                                 <option value="admin">Admin</option>
                             </select>
                         </div>
+
                         <button type="submit" class="btn-login">Add User</button>
                     </div>
                 </form>
             </div>
 
+            <!-- ===== USERS TABLE ===== -->
+            <!-- Shows all registered users with their role and status -->
             <div class="table-container">
                 <table class="data-table">
                     <thead>
@@ -94,9 +128,11 @@
                             <td>{{ user.id }}</td>
                             <td>{{ user.username }}</td>
                             <td>
+                                <!-- Role badge — blue for admin, green for user -->
                                 <span class="role-badge role-{{ user.role }}">{{ user.role }}</span>
                             </td>
                             <td>
+                                <!-- Status badge — shows Locked if account is locked, Active otherwise -->
                                 {% if user.locked_until %}
                                     <span class="status-badge status-failed">🔒 Locked</span>
                                 {% else %}
@@ -104,13 +140,18 @@
                                 {% endif %}
                             </td>
                             <td>
+                                <!-- Delete button — only shown for other users, not yourself -->
                                 {% if user.username != current_user.username %}
-                                <a href="{{ url_for('delete_user', user_id=user.id) }}"
-                                    class="btn-delete"
-                                    onclick="return confirm('Delete {{ user.username }}?')">
-                                    🗑️ Delete
-                                </a>
+                                <!-- POST form — prevents URL-based deletion attacks -->
+                                <form method="POST" action="{{ url_for('delete_user', user_id=user.id) }}"
+                                    onsubmit="return confirm('Delete {{ user.username }}?')"
+                                    style="display:inline;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn-delete">🗑️ Delete</button>
+                                </form>
+                                
                                 {% else %}
+                                <!-- Cannot delete your own account -->
                                 <span class="text-muted">Current User</span>
                                 {% endif %}
                             </td>
@@ -122,17 +163,22 @@
 
         </div>
     </div>
-<script>
+
+    <script>
+    // ===== LIVE PASSWORD CHECKER =====
+    // Runs every time the user types in the password field
+    // Shows live feedback so user knows exactly what is missing
     function checkPassword(input) {
         const val = input.value;
         const note = document.getElementById('passwordNote');
 
-        // Reset
+        // Reset border and note
         input.style.borderColor = '';
         note.style.visibility = 'hidden';
 
         if (val.length === 0) return;
 
+        // Check minimum length
         if (val.length < 8) {
             input.style.borderColor = '#f85149';
             note.style.visibility = 'visible';
@@ -141,6 +187,7 @@
             return;
         }
 
+        // Check maximum length
         if (val.length > 72) {
             input.style.borderColor = '#f85149';
             note.style.visibility = 'visible';
@@ -149,6 +196,7 @@
             return;
         }
 
+        // Check for uppercase letter
         if (!/[A-Z]/.test(val)) {
             input.style.borderColor = '#f85149';
             note.style.visibility = 'visible';
@@ -157,6 +205,7 @@
             return;
         }
 
+        // Check for lowercase letter
         if (!/[a-z]/.test(val)) {
             input.style.borderColor = '#f85149';
             note.style.visibility = 'visible';
@@ -165,6 +214,7 @@
             return;
         }
 
+        // Check for number
         if (!/[0-9]/.test(val)) {
             input.style.borderColor = '#f85149';
             note.style.visibility = 'visible';
@@ -173,6 +223,7 @@
             return;
         }
 
+        // Check for special character
         if (!/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(val)) {
             input.style.borderColor = '#f85149';
             note.style.visibility = 'visible';
@@ -181,53 +232,76 @@
             return;
         }
 
-        // All good
+        // All requirements met
         input.style.borderColor = '#3fb950';
         note.style.visibility = 'visible';
         note.style.color = '#3fb950';
         note.textContent = '✅ Password looks good!';
     }
+
+    // ===== FORM VALIDATION =====
+    // Runs when the Add User button is clicked
+    // Checks all fields before allowing the form to submit
+    // This is frontend validation — backend also validates for security
     function validateForm() {
-    const password = document.getElementById('passwordInput').value;
-    const username = document.getElementById('usernameInput').value.trim();
+        const password = document.getElementById('passwordInput').value;
+        const username = document.getElementById('usernameInput').value.trim();
 
-    if (username.length < 3) {
-        alert('Username must be at least 3 characters.');
-        return false;
+        // Check username length
+        if (username.length < 3) {
+            alert('Username must be at least 3 characters.');
+            return false;
+        }
+
+        // Check password length
+        if (password.length < 8) {
+            alert('Password must be at least 8 characters.');
+            return false;
+        }
+
+        if (password.length > 72) {
+            alert('Password must not exceed 72 characters.');
+            return false;
+        }
+
+        // Check password complexity
+        if (!/[A-Z]/.test(password)) {
+            alert('Password must contain at least 1 uppercase letter (A-Z).');
+            return false;
+        }
+
+        if (!/[a-z]/.test(password)) {
+            alert('Password must contain at least 1 lowercase letter (a-z).');
+            return false;
+        }
+
+        if (!/[0-9]/.test(password)) {
+            alert('Password must contain at least 1 number (0-9).');
+            return false;
+        }
+
+        if (!/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password)) {
+            alert('Password must contain at least 1 special character (!@#$%^&*).');
+            return false;
+        }
+
+        return true; // All checks passed — allow form to submit
     }
 
-    if (password.length < 8) {
-        alert('Password must be at least 8 characters.');
-        return false;
-    }
+    // ===== PASSWORD TOGGLE =====
+    // Allows admin to show or hide the password while typing
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('passwordInput');
 
-    if (password.length > 72) {
-        alert('Password must not exceed 72 characters.');
-        return false;
-    }
-
-    if (!/[A-Z]/.test(password)) {
-        alert('Password must contain at least 1 uppercase letter (A-Z).');
-        return false;
-    }
-
-    if (!/[a-z]/.test(password)) {
-        alert('Password must contain at least 1 lowercase letter (a-z).');
-        return false;
-    }
-
-    if (!/[0-9]/.test(password)) {
-        alert('Password must contain at least 1 number (0-9).');
-        return false;
-    }
-
-    if (!/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password)) {
-        alert('Password must contain at least 1 special character (!@#$%^&*).');
-        return false;
-    }
-
-    return true;  // all good — allow submit
-}
-</script>
+    togglePassword.addEventListener('click', function() {
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            togglePassword.textContent = '🙈';
+        } else {
+            passwordInput.type = 'password';
+            togglePassword.textContent = '👁️';
+        }
+    });
+    </script>
 </body>
 </html>

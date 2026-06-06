@@ -10,13 +10,16 @@
 
     <div class="login-container">
 
-        <!-- Logo / Title -->
+        <!-- ===== HEADER ===== -->
+        <!-- Shows the system title and access warning -->
         <div class="login-header">
             <h1>🔒 Security Dashboard</h1>
             <p>Authorized Personnel Only</p>
         </div>
 
-        <!-- Flash Messages (errors, warnings) -->
+        <!-- ===== FLASH MESSAGES ===== -->
+        <!-- Shows error, success, or warning messages from the server -->
+        <!-- Examples: "Invalid credentials!", "Account locked.", "Too many requests." -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -27,20 +30,29 @@
             {% endif %}
         {% endwith %}
 
-        <!-- Login Form -->
+        <!-- ===== LOGIN FORM ===== -->
+        <!-- method="POST" sends data securely in the request body, not in the URL -->
         <form method="POST" action="{{ url_for('login') }}">
+
+            <!-- CSRF Token — hidden field that proves this form was submitted from our site -->
+            <!-- Blocks fake form submissions from hackers on other websites -->
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <!-- Username Field -->
             <div class="form-group">
                 <label for="username">Username</label>
-                <input type="text" id="username" name="username" 
+                <input type="text" id="username" name="username"
                 placeholder="Enter username" required autofocus>
             </div>
 
             <!-- Password Field -->
+            <!-- type="password" hides the characters while typing -->
             <div class="form-group">
                 <label for="password">Password</label>
                 <div class="password-wrapper">
                     <input type="password" id="password" name="password"
                     placeholder="Enter password" required>
+                    <!-- Eye icon — click to show/hide password -->
                     <span id="togglePassword">👁️</span>
                 </div>
             </div>
@@ -52,17 +64,20 @@
     </div>
 
     <script>
+    // ===== PASSWORD TOGGLE =====
+    // Allows user to show or hide their password while typing
+    // Works on all browsers (Chrome, Firefox, Edge, Safari)
     const togglePassword = document.getElementById('togglePassword');
     const passwordInput = document.getElementById('password');
 
     togglePassword.addEventListener('click', function() {
-        // Toggle between password and text
+        // Switch between hidden (password) and visible (text)
         if (passwordInput.type === 'password') {
             passwordInput.type = 'text';
-            togglePassword.textContent = '🙈';
+            togglePassword.textContent = '🙈'; // Password is visible
         } else {
             passwordInput.type = 'password';
-            togglePassword.textContent = '👁️';
+            togglePassword.textContent = '👁️'; // Password is hidden
         }
     });
     </script>

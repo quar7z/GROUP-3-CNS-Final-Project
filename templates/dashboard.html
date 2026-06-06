@@ -9,34 +9,45 @@
 <body>
     <div class="dashboard-container">
 
-        <!-- Sidebar -->
+        <!-- ===== SIDEBAR ===== -->
+        <!-- Fixed navigation panel on the left side -->
+        <!-- Admin sees all menu items, regular users only see Dashboard and Activity Logs -->
         <div class="sidebar">
             <div class="sidebar-header">
                 <h2>🔒 Security</h2>
                 <p>Dashboard</p>
             </div>
             <nav class="sidebar-nav">
+                <!-- Available to all logged in users -->
                 <a href="{{ url_for('dashboard') }}" class="nav-item active">📊 Dashboard</a>
+
+                <!-- Admin only menu items -->
                 {% if current_user.role == 'admin' %}
                 <a href="{{ url_for('users') }}" class="nav-item">👥 Users</a>
                 <a href="{{ url_for('logs') }}" class="nav-item">📋 Login Logs</a>
                 {% endif %}
+
+                <!-- Available to all logged in users -->
+                <a href="{{ url_for('activity') }}" class="nav-item">📝 Activity Logs</a>
             </nav>
             <div class="sidebar-footer">
                 <a href="{{ url_for('logout') }}" class="btn-logout">🚪 Logout</a>
             </div>
         </div>
 
-        <!-- Main Content -->
+        <!-- ===== MAIN CONTENT ===== -->
         <div class="main-content">
 
-            <!-- Top Bar -->
+            <!-- ===== TOP BAR ===== -->
+            <!-- Shows page title and currently logged in username -->
             <div class="topbar">
                 <h1>Dashboard</h1>
                 <span>Welcome, {{ current_user.username }}!</span>
             </div>
 
-            <!-- Info Bar -->
+            <!-- ===== INFO BAR ===== -->
+            <!-- Shows live date, time, weather, and location -->
+            <!-- All values are detected automatically using JavaScript -->
             <div class="info-bar">
                 <div class="info-item">
                     <span class="info-icon">📅</span>
@@ -56,19 +67,26 @@
                 </div>
             </div>
 
-            <!-- Camera Feed -->
+            <!-- ===== CAMERA FEED ===== -->
+            <!-- Displays live CCTV stream from the server -->
+            <!-- Shows Online/Offline status in the header -->
             <div class="camera-container">
                 <div class="camera-header">
                     <span class="camera-label">📷 CCTV Camera 1</span>
+                    <!-- Status badge — updates automatically based on stream -->
                     <span id="camera-header-status" class="camera-status offline">
                         🔴 Offline — Camera not connected yet
                     </span>
                 </div>
                 <div class="camera-feed">
+                    <!-- Live stream image — src points to the /video-feed route in app.py -->
+                    <!-- onerror triggers showOffline() if stream fails to load -->
                     <img id="camera-stream"
                         src="{{ url_for('video_feed') }}"
                         style="width:100%; height:100%; object-fit:contain;"
                         onerror="showOffline()">
+
+                    <!-- Offline message — hidden by default, shown if camera is unavailable -->
                     <div id="offline-msg" class="camera-placeholder" style="display:none;">
                         <p>📷</p>
                         <p>Camera Offline</p>
@@ -81,22 +99,28 @@
     </div>
 
     <script>
-        // Camera status
+        // ===== CAMERA STATUS =====
+        // When the stream loads successfully, update the status badge to Online
         document.getElementById('camera-stream').onload = function() {
             const status = document.getElementById('camera-header-status');
             status.className = 'camera-status online';
             status.textContent = '🟢 Online — Live Feed';
         }
+
+        // Shows the offline message and hides the broken stream image
         function showOffline() {
             document.getElementById('camera-stream').style.display = 'none';
             document.getElementById('offline-msg').style.display = 'flex';
         }
+
+        // If stream has not loaded after 3 seconds, assume camera is offline
         setTimeout(function() {
             const img = document.getElementById('camera-stream');
             if (img.naturalWidth === 0) showOffline();
         }, 3000);
 
-        // Date and time
+        // ===== LIVE DATE AND TIME =====
+        // Updates the date and time display every second
         function updateDateTime() {
             const now = new Date();
             document.getElementById('live-date').textContent =
@@ -105,25 +129,32 @@
                 now.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true});
         }
         updateDateTime();
-        setInterval(updateDateTime, 1000);
+        setInterval(updateDateTime, 1000); // Run every 1000ms (1 second)
 
-        // Weather + location
+        // ===== WEATHER AND LOCATION =====
+        // Fetches weather data from Open-Meteo API (free, no API key needed)
+        // Fetches location name from Nominatim (OpenStreetMap reverse geocoding)
         function getWeatherAndLocation(lat, lon) {
+            // Get current weather using latitude and longitude
             fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
                 .then(r => r.json())
                 .then(data => {
                     const temp = data.current_weather.temperature;
                     const code = data.current_weather.weathercode;
+
+                    // Convert weather code to human readable condition
                     let condition = '';
                     if (code === 0) condition = '☀️ Clear Sky';
                     else if (code <= 3) condition = '⛅ Partly Cloudy';
                     else if (code <= 67) condition = '🌧️ Rainy';
                     else if (code <= 77) condition = '❄️ Snowy';
                     else condition = '⛈️ Stormy';
+
                     document.getElementById('weather').textContent = `${temp}°C — ${condition}`;
                 })
                 .catch(() => document.getElementById('weather').textContent = 'Unavailable');
 
+            // Convert coordinates to city/state/country name
             fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
                 .then(r => r.json())
                 .then(data => {
@@ -136,6 +167,8 @@
                 .catch(() => document.getElementById('location').textContent = 'Unavailable');
         }
 
+        // Ask browser for user's current GPS coordinates
+        // If user blocks location access, show "Location blocked"
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 pos => getWeatherAndLocation(pos.coords.latitude, pos.coords.longitude),
