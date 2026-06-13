@@ -68,7 +68,7 @@ def add_no_cache(response):
     # connect-src — allow weather and location API calls
     response.headers['Content-Security-Policy'] = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline'; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
         "style-src 'self' 'unsafe-inline'; "
         "img-src 'self' data:; "
         "connect-src 'self' https://api.open-meteo.com https://nominatim.openstreetmap.org https://*.trycloudflare.com; "
