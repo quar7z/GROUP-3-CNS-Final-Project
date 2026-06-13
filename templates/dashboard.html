@@ -123,6 +123,7 @@
             hls.on(Hls.Events.MANIFEST_PARSED, function() {
                 document.getElementById('camera-header-status').className = 'camera-status online';
                 document.getElementById('camera-header-status').textContent = '🟢 Online — Live Feed';
+                video.play();
             });
         }
 
