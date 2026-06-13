@@ -72,7 +72,7 @@ def add_no_cache(response):
         "style-src 'self' 'unsafe-inline'; "
         "img-src 'self' data:; "
         "connect-src 'self' https://api.open-meteo.com https://nominatim.openstreetmap.org https://*.trycloudflare.com; "
-        "media-src 'self' https://*.trycloudflare.com; "
+        "media-src 'self' blob: https://*.trycloudflare.com; "
     )
 
     # ===== ADDITIONAL SECURITY HEADERS =====
