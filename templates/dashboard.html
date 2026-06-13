@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Security Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
 </head>
 <body>
     <div class="dashboard-container">
@@ -93,21 +95,25 @@
 
     <script>
         // ===== CAMERA STATUS =====
-        // When the stream loads successfully, update the status badge to Online
        function showOffline() {
             document.getElementById('camera-stream').style.display = 'none';
             document.getElementById('offline-msg').style.display = 'flex';
         }
         
         var video = document.getElementById('camera-stream');
-        var hls = new Hls();
-        hls.loadSource('https://americas-hay-naval-wisdom.trycloudflare.com/homecam/index.m3u8');
-        hls.attachMedia(video);
-        hls.on(Hls.Events.ERROR, function() { showOffline(); });
-        hls.on(Hls.Events.MANIFEST_PARSED, function() {
-            document.getElementById('camera-header-status').className = 'camera-status online';
-            document.getElementById('camera-header-status').textContent = '🟢 Online — Live Feed';
-        });
+        var hlsUrl = '{{ camera_hls_url }}';
+        if (!hlsUrl) {
+            showOffline();
+        } else {
+            var hls = new Hls();
+            hls.loadSource(hlsUrl);
+            hls.attachMedia(video);
+            hls.on(Hls.Events.ERROR, function() { showOffline(); });
+            hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                document.getElementById('camera-header-status').className = 'camera-status online';
+                document.getElementById('camera-header-status').textContent = '🟢 Online — Live Feed';
+            });
+        }
 
         // ===== LIVE DATE AND TIME =====
         // Updates the date and time display every second
@@ -169,6 +175,5 @@
             );
         }
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </body>
 </html>
