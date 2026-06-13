@@ -101,7 +101,7 @@
         
         var video = document.getElementById('camera-stream');
         var hls = new Hls();
-        hls.loadSource('https://americas-hay-naval-wisdom.trycloudflare.com/index.m3u8');
+        hls.loadSource('https://americas-hay-naval-wisdom.trycloudflare.com/homecam/index.m3u8');
         hls.attachMedia(video);
         hls.on(Hls.Events.ERROR, function() { showOffline(); });
         hls.on(Hls.Events.MANIFEST_PARSED, function() {
