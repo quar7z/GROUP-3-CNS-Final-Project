@@ -105,7 +105,7 @@
         if (!hlsUrl) {
             showOffline();
         } else {
-            var hls = new Hls({
+            var hls = new Hls();
             hls.loadSource(hlsUrl);
             hls.attachMedia(video);
             hls.on(Hls.Events.ERROR, function(event, data) {
