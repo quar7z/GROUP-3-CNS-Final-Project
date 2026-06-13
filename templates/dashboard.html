@@ -79,14 +79,7 @@
                     </span>
                 </div>
                 <div class="camera-feed">
-                    <!-- Live stream image — src points to the /video-feed route in app.py -->
-                    <!-- onerror triggers showOffline() if stream fails to load -->
-                    <img id="camera-stream"
-                        src="{{ url_for('video_feed') }}"
-                        style="width:100%; height:100%; object-fit:contain;"
-                        onerror="showOffline()">
-
-                    <!-- Offline message — hidden by default, shown if camera is unavailable -->
+                    <video id="camera-stream" style="width:100%; height:100%; object-fit:contain;" autoplay controls muted></video>
                     <div id="offline-msg" class="camera-placeholder" style="display:none;">
                         <p>📷</p>
                         <p>Camera Offline</p>
@@ -101,23 +94,20 @@
     <script>
         // ===== CAMERA STATUS =====
         // When the stream loads successfully, update the status badge to Online
-        document.getElementById('camera-stream').onload = function() {
-            const status = document.getElementById('camera-header-status');
-            status.className = 'camera-status online';
-            status.textContent = '🟢 Online — Live Feed';
-        }
-
-        // Shows the offline message and hides the broken stream image
-        function showOffline() {
+       function showOffline() {
             document.getElementById('camera-stream').style.display = 'none';
             document.getElementById('offline-msg').style.display = 'flex';
         }
-
-        // If stream has not loaded after 3 seconds, assume camera is offline
-        setTimeout(function() {
-            const img = document.getElementById('camera-stream');
-            if (img.naturalWidth === 0) showOffline();
-        }, 3000);
+        
+        var video = document.getElementById('camera-stream');
+        var hls = new Hls();
+        hls.loadSource('https://americas-hay-naval-wisdom.trycloudflare.com/index.m3u8');
+        hls.attachMedia(video);
+        hls.on(Hls.Events.ERROR, function() { showOffline(); });
+        hls.on(Hls.Events.MANIFEST_PARSED, function() {
+            document.getElementById('camera-header-status').className = 'camera-status online';
+            document.getElementById('camera-header-status').textContent = '🟢 Online — Live Feed';
+        });
 
         // ===== LIVE DATE AND TIME =====
         // Updates the date and time display every second
@@ -179,5 +169,6 @@
             );
         }
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </body>
 </html>
