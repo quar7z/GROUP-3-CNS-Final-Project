@@ -106,11 +106,6 @@
             showOffline();
         } else {
             var hls = new Hls({
-                lowLatencyMode: true,
-                liveSyncDuration: 3,
-                liveMaxLatencyDuration: 6,
-                maxBufferLength: 6
-            });
             hls.loadSource(hlsUrl);
             hls.attachMedia(video);
             hls.on(Hls.Events.ERROR, function(event, data) {
