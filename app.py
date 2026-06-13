@@ -274,7 +274,8 @@ def dashboard():
         camera_status = 'Online' if cap.isOpened() else 'Offline'
     except:
         camera_status = 'Offline'
-    return render_template('dashboard.html', camera_status=camera_status)
+    camera_hls_url = os.getenv('CAMERA_HLS_URL', '')
+    return render_template('dashboard.html', camera_status=camera_status, camera_hls_url=camera_hls_url)
 
 @app.route('/video-feed')
 @login_required
